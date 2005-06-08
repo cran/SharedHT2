@@ -1,0 +1,44 @@
+Package SharedHT2
+=========================================================================
+is a package containing both univariate and multivariate 
+Empirical Bayes statistics for conducting gene level group comparisons
+in micro-array data. Groups could be either treatment_1 versus control,
+treatment_2 versus control, ..., treatment_d versus control OR
+a time course micro-array experiment. In all cases, the experiment
+must be replicated at least d times. The data must first be pre-processed
+to remove systematic within and between array variation. See the
+Bioconductor project websit http://www.bioconductor.org/ for details.
+Data to be analyzed must be the log (base 2 or base 10) of expression
+ratios. Variable names must be chosen to be internally consistent in 
+some searchable way. For example, if you have two experimental groups 
+(say treatment one versus control and treatment two versus control), 
+and three replicates in each group, you might choose names like:
+
+"log2.grp1.n1", "log2.grp2.n1", "log2.grp1.n2", "log2.grp2.n2", 
+"log2.grp1.n3", "log2.grp2.n3"
+
+Note that order that the names occur is irrelevent, and use the
+gene identifiers to name the rows. Here are some more quick tips 
+to get you started:
+
+EB.Anova
+---------
+The main tool is the function 'EB.Anova' which computes per gene 
+empirical Bayes Anova statistics. With 'Var.Struct' set to "general"
+(the default) a Wishart/Inverse Wishart Bayesian model is fit
+to the per gene empirical variance/covariance matrices and the
+per gene empirical Bayes Hotelling T-Squared tests are computed.
+With 'Var.Struct' set to "simple" it is assumed that group variances
+are equal, and a Chi-Squared/Inverse Gamma Bayesian model is fit
+to the per gene within group sums of squares. The "general" test 
+performs quite well, even the asymptotic p-values make sense and 
+are 'FDR'-able under a variety of departures from model assumptions. 
+Note that a variety hypothesis tests are possible.  Specifically, 
+if n=#reps, d=#groups and 
+(  i) if n  > d > 1+I("general"), you can test the H0="zero.means" null,
+( ii) if n >= d > 1, you can test the H0="equal.means" null,
+(iii) if n >= d > 1, you can test the H0="no.trend" null,
+but of course the latter only makes sense if d > 2. It is entirely 
+coded in C.  An experiment with N=12625 genes, d=2 and n=3 fits and 
+produces a "genelist" in less than 10 seconds on a pentium 4. To call 
+it, type ?EB.Anova

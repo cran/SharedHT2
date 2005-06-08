@@ -1,0 +1,13 @@
+
+
+Package SharedHT2
+=================
+
+Decide where you want to do your micro-array analysis and start R from
+within that directory.  Next, load the package using
+
+library(SharedHT2)
+
+When the package loads you will be given instructions how to read the
+news file and that will get you started.
+
