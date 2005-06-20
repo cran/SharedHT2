@@ -58,7 +58,7 @@
   nTP <- 100
 
   MyDat <- SimOnenu.mix(nu=nu, Lambda=Lambda, Ngenes=Ngenes, nreps=nreps, 
-                        effect.size=c(rep(7.5/nreps^0.5, nTP), rep(0, Ngenes-nTP)))
+                        effect.size=c(rep(7.5/nreps^{0.5}, nTP), rep(0, Ngenes-nTP)))
 
 # notice the names given to the columns by default:
 

@@ -31,7 +31,7 @@ find.ncp(e.I, e.II, nreps, d)
  Once you derive the non-centrality parameter then you can use it
  in specifying the population means for genes having differential expression.
  For example if investiagation using \code{find.ncp} turns up the value
- 7.5 then use $7.5/nreps^0.5$ to specify group means corresponding to 
+ 7.5 then use $7.5/nreps^{0.5}$ to specify group means corresponding to 
  experimental conditions under which the gene is differentially expressed.}
 }
 \examples{

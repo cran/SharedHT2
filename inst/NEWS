@@ -35,10 +35,9 @@ performs quite well, even the asymptotic p-values make sense and
 are 'FDR'-able under a variety of departures from model assumptions. 
 Note that a variety hypothesis tests are possible.  Specifically, 
 if n=#reps, d=#groups and 
-(  i) if n  > d > 1+I("general"), you can test the H0="zero.means" null,
-( ii) if n >= d > 1, you can test the H0="equal.means" null,
-(iii) if n >= d > 1, you can test the H0="no.trend" null,
-but of course the latter only makes sense if d > 2. It is entirely 
-coded in C.  An experiment with N=12625 genes, d=2 and n=3 fits and 
-produces a "genelist" in less than 10 seconds on a pentium 4. To call 
+(  i) if n  > max(d, 1+I("general")), you can test the H0="zero.means" null,
+( ii) if n >= max(d, 1), you can test the H0="equal.means" null or the 
+      H0="no.trend" null, but of course the latter only makes sense if d > 2. 
+It is entirely coded in C.  An experiment with N=12625 genes, d=2 and n=3 
+fits and produces a "genelist" in less than 10 seconds on a pentium 4. To call 
 it, type ?EB.Anova

@@ -77,7 +77,7 @@ SimW.IW(nsim, nu = NULL, Lambda = NULL, theta = NULL, nreps,
   nreps <- 3
   Ngenes <- 12625
   nTP <- 100
-  effect.size <- c(rep(7.5/3^0.5, nTP), rep(0, Ngenes - nTP)
+  effect.size <- c(rep(7.5/3^{0.5}, nTP), rep(0, Ngenes - nTP)
   theta <- EBfit(fit.SimAffyDat)$coef
   SimResults <- SimW.IW(nsim=nsim, theta = theta, nreps = nreps, 
           Ngenes = Ngenes, effect.size = effect.size)

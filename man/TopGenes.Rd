@@ -47,10 +47,10 @@
   \item{GeneId}{Taken from the row component of \code{dimnames} in the original
     dataframe.  As such, it is very usefull to name your rows using the affy gene
     identifiers as these are searchable in the GeneCards database.}
-  \item{\code{NAME1}}{Group mean corresponding to the group named \code{NAME1}}
+  \item{'NAME1'}{Group mean corresponding to the group named \code{NAME1}}
   \item{...}{}
-  \item{\code{NAMEd}}{Group mean corresponding to the group named \code{NAMEd}}
-  \item{\code{TYPE}.stat}{The statistic used in the sort. This is determined
+  \item{'NAMEd'}{Group mean corresponding to the group named \code{NAMEd}}
+  \item{'TYPE'.stat}{The statistic used in the sort. This is determined
     by user choices at two levels. First, when computations are performed inside
     the call to \code{EB.Anova}, the specification of \code{Var.Struct}, which
     defaults to "general" with alternate value "simple" determins whether the 
@@ -64,9 +64,9 @@
     last two split is on the value of \code{Var.Struct} used in the \code{EB.Anova} 
     computation, while the first/second or third/fourth split is made on the \code{by}
     argument passed to \code{TopGenes}.}
-  \item{\code{TYPE}.p-val}{The corresponding p-value under the corresponding model.
+  \item{'TYPE'.p-val}{The corresponding p-value under the corresponding model.
     See the manuscript sharedHT2.pdf in the ./doc directory.}
-  \item{FDR.stepdown=\code{FDR}}{The BH criterion values computed as 
+  \item{FDR.stepdown='FDR'}{The BH criterion values computed as 
     \code{FDR * rank/Ngenes}}
 }
 

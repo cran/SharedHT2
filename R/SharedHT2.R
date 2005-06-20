@@ -8,10 +8,21 @@ function(data, labels, H0 = "equal.means", Var.Struct = "general",
     .call.$Var.Struct <- Var.Struct
   }
   cat("Var.Struct = ",Var.Struct,"\n")
-  if(Var.Struct != "simple" && Var.Struct != "general")
-    stop("Argument 'Var.Struct' must be either \"general\" or \"simple\"")    
-  if(Var.Struct == "general") m[[1]] <- as.name("SharedHT2")
-  if(Var.Struct == "simple") m[[1]] <- as.name("SharedVar")
+  vs <- charmatch(Var.Struct, c("simple", "general"), 0)
+  h0 <- charmatch(H0, c("no.trend","equal.means","zero.means"), 0)
+  if(vs == 0)
+    stop("Argument 'Var.Struct' must be either \"general\" or \"simple\"")
+  if(h0 == 0)
+    stop("Argument 'H0' must be one of c(\"zero.means\",\"equal.means\",\"no.trend\")")
+  m[[1]] <- as.name(c("SharedVar","SharedHT2")[vs])
+  nms <- names(data)  
+  clnum <- length(labels)
+  d <- clnum
+  n <- length(grep(labels[1], nms))  
+  if(h0 == 3 & (n <= max(d, vs)))
+    stop("H0=\"zero.means\" requires that n > max(d, 1 + I(Var.Struct==\"general\"))")
+  if(h0 < 3 & (n < max(d, 1)))
+     stop("H0=\"equal.means\" or \"no.trend\" requires that n >= d >= 1")
   m$Var.Struct <- NULL
   ans <- eval(m)
   if(!fit.only) 

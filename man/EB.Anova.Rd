@@ -43,10 +43,10 @@
     c("log2.grp1", "log2.grp2")}}
   \item{H0}{a character string giving the form of the null hypothesis
     that is to be tested. Specifically
-    (i)   if \code{n  > d > 2("general"), 1("simple")}, you can test
+    (i)   if \code{n > max(d, 1+ I(Var.Struct=="general"))}, you can test
     against the \code{H0="zero.means"} null,
-    (ii)  if \code{n >= d > 1}, you can test against the \code{H0="equal.means"} null,
-    (iii) if \code{n >= d > 1}, you can test against the \code{H0="no.trend"} null,
+    (ii)  if \code{n >= max(d, 1)}, you can test against the
+    \code{H0="equal.means"} null or \code{H0="no.trend"} null,
     but of course the latter only makes sense if \code{d > 2}.  Set to
     \code{"equal.means"} by default}
   \item{Var.Struct}{set to either \code{"general"} or \code{"simple"}.
