@@ -58,11 +58,11 @@ typedef int CmprFun(const void *x, const void *y);
 
 CmprFun cmprShHT2, cmprHT2, cmprShUT2, cmprUT2, *cmpr;
 
-void tloglik(long *pnpar, double *ptheta, double *MVM, long *pN, long *pd, 
-	     long *pnreps, double *pans);
+void tloglik(double *ptheta, double *MVM, long *pN, long *pd, 
+             long *pnreps, double *pans);
 
-void tGloglik(double *ptheta, double *MVM, long *pN, long *pd, long *pnreps, 
-	      double *pG);
+void tGloglik(double *ptheta, double *MVM, long *pN, long *pd, 
+              long *pnreps, double *pG);
 
 void nmmin(int n, double *xin, double *x, double *Fmin, optimfn fn,
            int *fail, double abstol, double intol, void *ex,
@@ -83,8 +83,8 @@ void rnormn(long *pn, double *ans);
 void printmat(double *pA, long nr, long nc, char *name);
 
 void FitInvWish1(double *ptheta0, long *pverbose, Data *y, double *objval, 
-		 double *estimate, double *estimater, long *fail, long *fncnt, 
-		 long *grcnt, long *mask, long *usegr, double *G, double *H);
+		 double *estimate, long *fail, long *fncnt, long *grcnt, 
+                 long *mask, long *usegr, double *G, double *H);
 
 void FitEqualVar1(double *ptheta0, long *pverbose, DataEV *y, double *objval, 
                   double *estimate, long *fail, long *fncnt, long *grcnt, 
@@ -106,7 +106,7 @@ void SimW_IW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
   double Top, stat1, stat2, stat3, stat4, pval1, pval2, pval3, pval4;
 
   double *df, *pW, *SgmHlf, *xbuff, *muhat, *res, *Sighat, *WSSQ, *ptheta0, *rFDR;
-  double *objv, *estimate, *estimater, *G, *H, *Y, *Sigma, *Lambda_isim, *LbdHlf, *sig, *SigInv;
+  double *objv, *estimate, *G, *H, *Y, *Sigma, *Lambda_isim, *LbdHlf, *sig, *SigInv;
 
   Data *y;
   DataEV *yEV;
@@ -143,7 +143,6 @@ void SimW_IW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
   ptheta0     = (double *)S_alloc(     npar, sizeof(double));
   objv        = (double *)S_alloc(        1, sizeof(double));
   estimate    = (double *)S_alloc(     npar, sizeof(double));
-  estimater   = (double *)S_alloc(     npar, sizeof(double));
   G           = (double *)S_alloc(     npar, sizeof(double));
   H           = (double *)S_alloc(    npar2, sizeof(double));
   Y           = (double *)S_alloc(mxnreps*d, sizeof(double));
@@ -278,13 +277,14 @@ void SimW_IW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
     fclose(dtfl_ptr);
 
     /* Fit the model for the marginal distribution of Sighat under the Wishart/Inverse Wishart */
+
     y->MVM = Sighat;
     y->pN = pN;
     y->pd = pd;
     y->nreps = pnreps;
 
     for(l=0;l<npar;l++) *(ptheta0 + l) = 0.0;
-    FitInvWish1(ptheta0, verb, y, objv, estimate, estimater, fail, fncnt, grcnt, 
+    FitInvWish1(ptheta0, verb, y, objv, estimate, fail, fncnt, grcnt, 
                 mask, usegr, G, H);
 
     /* Store the coefficient estimates for all simulation rounds:                              */
@@ -526,8 +526,8 @@ void SimW_IW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
 }
 
 void FitInvWish1(double *ptheta0, long *pverbose, Data *y, double *objval, 
-		 double *estimate, double *estimater, long *fail, long *fncnt, 
-		 long *grcnt, long *mask, long *usegr, double *G, double *H)
+		 double *estimate, long *fail, long *fncnt, long *grcnt, 
+                 long *mask, long *usegr, double *G, double *H)
 {
   int verb, inpar, *ifail, *ifncnt, *igrcnt, *imask;
   long d, npar, i;
@@ -545,12 +545,8 @@ void FitInvWish1(double *ptheta0, long *pverbose, Data *y, double *objval,
   imask = (int *) mask;
 
   *estimate = 0.0;
-  *estimater = 0.0;
 
-  for(i=1;i<npar;i++) {
-    *(estimate+i) = 0.0;
-    *(estimater+i) = 0.0;
-  }
+  for(i=1;i<npar;i++) *(estimate+i) = 0.0;
 
   if(*usegr==0)
     nmmin(inpar, ptheta0, estimate, objval, loglik, ifail, -1e200, 1e-8, y,

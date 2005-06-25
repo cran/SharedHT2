@@ -21,7 +21,8 @@
 \usage{
 
   EB.Anova(data, labels, H0 = "equal.means", Var.Struct = "general",
-           verbose = T, subset, theta0 = NULL, gradient = F, fit.only = F)
+           verbose = TRUE, subset, theta0 = NULL, gradient = FALSE, 
+           fit.only = FALSE)
 }
 \arguments{
   \item{data}{a data frame containing the logged (base 2 or
@@ -39,16 +40,18 @@
     should be named using the gene identifiers.}
   \item{labels}{A character vector containing the group names, these
     being fragments of the variable names in the \code{data} argument
-    supplied. In the example above, \code{labels =
-    c("log2.grp1", "log2.grp2")}}
-  \item{H0}{a character string giving the form of the null hypothesis
-    that is to be tested. Specifically
-    (i)   if \code{n > max(d, 1+ I(Var.Struct=="general"))}, you can test
-    against the \code{H0="zero.means"} null,
-    (ii)  if \code{n >= max(d, 1)}, you can test against the
-    \code{H0="equal.means"} null or \code{H0="no.trend"} null,
-    but of course the latter only makes sense if \code{d > 2}.  Set to
-    \code{"equal.means"} by default}
+    supplied. In the example above, \code{labels = c("log2.grp1", "log2.grp2")}}
+  \item{H0}{can be either a character string giving the form of the null
+    hypothesis that is to be tested. Specifically, if
+    \code{Var.Struct="general"} and (i) if \#reps > \#groups then the
+    \code{H0="zero.means"} null may be tested (ii) if \#reps >
+    \#groups - 1  then the \code{H0="equal.means"} null may be tested.
+    (iii) if \#reps >= 2 then the \code{H0="no.trend"} null may be tested.
+    Alternatively, \code{H0} may be a user specified contrasts matrix
+    having \#groups columns and of rank less than \#replicates. When
+    \code{Var.Struct="simple"} then any of the above may be tested
+    as long as $n>2$.
+  }    
   \item{Var.Struct}{set to either \code{"general"} or \code{"simple"}.
     The default, \code{"general"}, fits the Wishart/Inverse Wishart model
     and computes per gene Empirical Bayes Hotelling T-Squared tests.

@@ -87,11 +87,11 @@ typedef int CmprFun(const void *x, const void *y);
 
 CmprFun cmprShHT2, cmprHT2, cmprShUT2, cmprUT2, *cmpr;
 
-void tloglik(long *pnpar, double *ptheta, double *MVM, long *pN, long *pd, 
-	     long *pnreps, double *pans);
+void tloglik(double *ptheta, double *MVM, long *pN, long *pd, 
+             long *pnreps, double *pans);
 
-void tGloglik(double *ptheta, double *MVM, long *pN, long *pd, long *pnreps, 
-	      double *pG);
+void tGloglik(double *ptheta, double *MVM, long *pN, long *pd, 
+              long *pnreps, double *pG);
 
 void nmmin(int n, double *xin, double *x, double *Fmin, optimfn fn,
            int *fail, double abstol, double intol, void *ex,
@@ -112,9 +112,9 @@ void rnormn(long *pn, double *ans);
 
 void printmat(double *pA, long nr, long nc, char *name);
 
-void FitInvWish1(double *ptheta0, long *pverbose, Data *y, double *objval, 
-		 double *estimate, double *estimater, long *fail, long *fncnt, 
-		 long *grcnt, long *mask, long *usegr, double *G, double *H);
+void FitInvWish1(double *ptheta0, long *pverbose, Data *y, double *objval,
+                 double *estimate, long *fail, long *fncnt, long *grcnt, 
+                 long *mask, long *usegr, double *G, double *H);
 
 void FitEqualVar1(double *ptheta0, long *pverbose, DataEV *y, double *objval, 
                   double *estimate, long *fail, long *fncnt, long *grcnt, 
@@ -175,7 +175,6 @@ void Simnu_mix(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
   ptheta0       = (double *)S_alloc(     npar, sizeof(double));
   objv          = (double *)S_alloc(        1, sizeof(double));
   estimate      = (double *)S_alloc(     npar, sizeof(double));
-  estimater     = (double *)S_alloc(     npar, sizeof(double));
   G             = (double *)S_alloc(     npar, sizeof(double));
   H             = (double *)S_alloc(    npar2, sizeof(double));
   Y             = (double *)S_alloc(mxnreps*d, sizeof(double));
@@ -328,8 +327,7 @@ void Simnu_mix(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
     y->nreps = pnreps;
 
     for(l=0;l<npar;l++) *(ptheta0 + l) = 0.0;
-    FitInvWish1(ptheta0, verb, y, objv, estimate, estimater, fail, fncnt, grcnt, 
-                mask, usegr, G, H);
+    FitInvWish1(ptheta0, verb, y, objv, estimate, fail, fncnt, grcnt, mask, usegr, G, H);
 
     /* Store the coefficient estimates for all simulation rounds:                              */
     for(l=0;l<npar;l++) *(coef + npar*isim + l) = *(estimate + l);

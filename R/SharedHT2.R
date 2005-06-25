@@ -1,28 +1,47 @@
 "EB.Anova" <-
 function(data, labels, H0 = "equal.means", Var.Struct = "general",
-         verbose = T, subset, theta0 = NULL, gradient = F, fit.only = F)
+         verbose = TRUE, subset, theta0 = NULL, gradient = FALSE,
+         fit.only = FALSE)
 {
   m <- .call. <- match.call()
   if(missing(Var.Struct)) {
     Var.Struct <- "general"
     .call.$Var.Struct <- Var.Struct
   }
-  cat("Var.Struct = ",Var.Struct,"\n")
   vs <- charmatch(Var.Struct, c("simple", "general"), 0)
-  h0 <- charmatch(H0, c("no.trend","equal.means","zero.means"), 0)
   if(vs == 0)
-    stop("Argument 'Var.Struct' must be either \"general\" or \"simple\"")
-  if(h0 == 0)
-    stop("Argument 'H0' must be one of c(\"zero.means\",\"equal.means\",\"no.trend\")")
+    stop("Argument 'Var.Struct' must be \"simple\" or \"general\"")
+  cat("Var.Struct = ",Var.Struct,"\n")
   m[[1]] <- as.name(c("SharedVar","SharedHT2")[vs])
   nms <- names(data)  
   clnum <- length(labels)
   d <- clnum
-  n <- length(grep(labels[1], nms))  
-  if(h0 == 3 & (n <= max(d, vs)))
-    stop("H0=\"zero.means\" requires that n > max(d, 1 + I(Var.Struct==\"general\"))")
-  if(h0 < 3 & (n < max(d, 1)))
-     stop("H0=\"equal.means\" or \"no.trend\" requires that n >= d >= 1")
+  n <- length(grep(labels[1], nms))
+  if(is.numeric(H0)){
+    M <- m$M <- rbind(H0)
+    H0 <- m$H0 <- "user"
+    r <- qr(M)$rank
+    d.M <- dim(M)
+    if(d.M[2] != d | r > d)
+      stop("User supplied contrast matrix must be of dimension " %,%
+           "q x (#groups) where q <= (#groups) and of rank <= (#groups)")
+  }
+  h0 <- charmatch(H0, c("no.trend","equal.means","zero.means"), 0)
+  if(h0 == 0 & H0 != "user")
+    stop("Argument 'H0' must be one of c(\"zero.means\",\"equal.means\",\"no.trend\")")
+  if(vs==2){
+    if(h0 == 3 & n <= d)
+      stop("Var.Struct \"general\" and H0=\"zero.means\" requires that " %,%
+           "(#reps) > (#groups)")
+    if(h0 == 2 & n <= d-1)
+      stop("Var.Struct \"general\" and H0=\"equal.means\" requires that " %,%
+           "(#reps) > (#groups)-1")
+    if(h0 == 1 & n <= 1)
+      stop("H0=\"no.trend\" requires at least two replicates per group")
+  }
+  if(vs==1 && n <= 1)
+    stop("Var.Struct==\"simple\" requires at least two replicates per group")
+ 
   m$Var.Struct <- NULL
   ans <- eval(m)
   if(!fit.only) 
@@ -32,18 +51,16 @@ function(data, labels, H0 = "equal.means", Var.Struct = "general",
 } 
 
 "SharedHT2" <- 
-function(data, labels, H0 = "equal.means", verbose = T, subset, theta0 = NULL,
-         gradient = F, fit.only = F)
+function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
+         theta0 = NULL, gradient = FALSE, fit.only = FALSE)
 {
-  if(length(grep(H0, c("zero.means", "equal.means", "no.trend"))) == 0)
-    stop("H0 must be one of these: 'zero.means' 'equal.means' or 'no.trend'")
   nms <- names(data)
   m <- .call. <- match.call()
   m[[1]] <- as.name("model.frame")
   idx <- c(sapply(labels,FUN=grep, nms))
   form <- make.form("", nms[idx])
   m$formula <- form
-  m$labels <- m$H0 <- m$verbose <- m$theta0 <- m$gradient <- m$fit.only <- NULL
+  m$labels <- m$H0 <- m$M <- m$verbose <- m$theta0 <- m$gradient <- m$fit.only <- NULL
   m <- eval(m, sys.parent())
   id <- dimnames(m)[[1]]
   gnum <- dim(m)[1]
@@ -66,6 +83,10 @@ function(data, labels, H0 = "equal.means", verbose = T, subset, theta0 = NULL,
         n/(n - 1) * rowMeans(Z.i * Z.j, na.rm = T)
     }
   }
+  if(H0 == "zero.means") {
+    M <- diag(p)
+    d <- p
+  }  
   if(H0 == "equal.means") {
     b <- diag(p) - 1/p * matrix(1, p, p)
     b.5 <- chol(b)
@@ -73,16 +94,13 @@ function(data, labels, H0 = "equal.means", verbose = T, subset, theta0 = NULL,
     d <- p - 1
     M <- rbind(b.5)
   }
-  if(H0 == "zero.means") {
-    M <- diag(p)
-    d <- p
-  }
   if(H0 == "no.trend") {
     x <- cbind(rep(1, p), (1:p))
     PI <- solve(t(x) %*% x) %*% t(x)
     M <- PI[2,  , drop = F]
     d <- 1
   }
+  if(H0 == "user") d <- qr(M)$rank
   if(verbose) {
     cat("You have chosen H0: ", H0, "\n")
     cat("N = ", N, " d = ", d, "\n")
@@ -102,7 +120,6 @@ function(data, labels, H0 = "equal.means", verbose = T, subset, theta0 = NULL,
             pverbose = as.integer(verbose),
             objval = as.double(0),
             estimate = as.double(rep(0,npar)),
-            estimater = as.double(rep(0,npar)),
             fail = as.integer(0),
             fncnt = as.integer(0),
             grcnt = as.integer(0),
@@ -163,8 +180,8 @@ function(data, labels, H0 = "equal.means", verbose = T, subset, theta0 = NULL,
 }
 
 "SharedVar" <- 
-  function(data, labels, H0="zero.means", verbose = T, subset, theta0 = NULL,
-           gradient = F, fit.only = F)
+  function(data, labels, H0="zero.means", M = NULL, verbose = TRUE, subset, theta0 = NULL,
+           gradient = FALSE, fit.only = FALSE)
 {
   nms <- names(data)
   m <- .call. <- match.call()
@@ -172,35 +189,27 @@ function(data, labels, H0 = "equal.means", verbose = T, subset, theta0 = NULL,
   idx <- c(sapply(labels,FUN=grep, nms))
   form <- make.form("", nms[idx])
   m$formula <- form
-  m$labels <- m$H0 <- m$verbose <- m$theta0 <- m$gradient <- m$fit.only <- NULL
+  m$labels <- m$H0 <- m$M <- m$verbose <- m$theta0 <- m$gradient <- m$fit.only <- NULL
   m <- eval(m, sys.parent())
   id <- dimnames(m)[[1]]
   gnum <- dim(m)[1]
   clnum <- length(labels)
   N <- gnum
-  p <- clnum
+  d <- clnum
   n <- length(grep(labels[1], nms))
-  mu.g <- matrix(NA, N, p)
-  var.g <- matrix(NA, N, p^2)
+  mu.g <- matrix(NA, N, d)
+  var.g <- matrix(NA, N, d^2)
   #find within group mean variance and sample size
   all.cols <- NULL
   Terms <- attr(m, "terms")
   Y <- model.matrix(Terms, m)[, -1, drop = F]
-  for(i in 1:p) {
+  S <- rep(0, N)
+  for(i in 1:d) {
     mu.g[, i] <- rowMeans(Y[, n * (i - 1) + (1:n)], na.rm = T)
-    for(j in unique(1:i)) {
-      Z.i <- Y[, n * (i - 1) + (1:n)] - mu.g[, i]
-      Z.j <- Y[, n * (j - 1) + (1:n)] - mu.g[, j]
-      var.g[, p * (i - 1) + j] <- var.g[, p * (j - 1) + i] <-
-        n/(n - 1) * rowMeans(Z.i * Z.j, na.rm = T)
-    }
+    Z.i <- Y[, n * (i - 1) + (1:n)] - mu.g[, i]
+    S <- S + n * rowMeans(Z.i^2, na.rm = T)
   }
-  d <- p
-  Ybar <- mu.g
-  take.diag.inds <- c((0:(d-1))*d + (1:d))
-  take.diag <- rep(0,d^2)
-  take.diag[take.diag.inds] <- 1
-  S <- (n-1) * var.g %*% take.diag
+
   if(missing(theta0)) theta0 <- rep(0, 2)
   nreps <- rep(n, N)
   
@@ -226,16 +235,28 @@ function(data, labels, H0 = "equal.means", verbose = T, subset, theta0 = NULL,
   eth <- exp(theta)
   s <- eth[1]
   r <- eth[2]
+  J.n.n <- matrix(1, n, n)
+  J.d.d <- matrix(1, d, d)
+  J.d.1 <- matrix(1, d, 1)
   if(!fit.only){
-    if(H0=="zero.means"){
-      Top <- (Y^2)%*%rep(1,n*d)
-      degTop <- n*d
+    if(H0 == "zero.means") M <- diag(d)
+    if(H0 == "equal.means") {
+      b <- diag(d) - 1/d * matrix(1, d, d)
+      b.5 <- chol(b)
+      b.5 <- b.5[ - d,  ]
+      M <- rbind(b.5)
     }
-    if(H0=="equal.means"){
-      Total <- (n*d-1)*apply(Y, 1, FUN=var)
-      Top <- Total - S
-      degTop <- d-1
+    if(H0 == "no.trend") {
+      x <- cbind(rep(1, d), (1:d))
+      PI <- solve(t(x) %*% x) %*% t(x)
+      M <- (J.d.1/d) %K% (PI[2,  , drop = F])
     }
+  
+    rnk <- qr(M)$rank
+    degTop <- ifelse(rnk == d, n*d, rnk)
+    M <- M %K% J.n.n
+    tr.inds <- c(outer(n*(0:(d-1)), 1:n, FUN="+"))
+    Top <- ((Y[,tr.inds] %*% M)*Y) %*% rep(1, n*d)
     ShUT2.stat <- Top/(2*r + S)*(2*s+d*(n-1))/degTop
     ShUT2.pval <- 1-pf(ShUT2.stat, degTop, 2*s+d*(n-1))
     UT2.stat <- Top/S*(d*(n-1))/degTop
@@ -265,7 +286,6 @@ function(data, labels, H0 = "equal.means", verbose = T, subset, theta0 = NULL,
   }
   ans
 }
-
 
 "TopGenes" <- 
 function (obj, by = "EB", ref = 1, FDR = 0.05, allsig = FALSE, n.g = 20, 
@@ -324,7 +344,7 @@ function (obj, by = "EB", ref = 1, FDR = 0.05, allsig = FALSE, n.g = 20,
     else 
       ans <- cbind(ans, signif(T2, 3), signif(pval, 4), signif(stepwise, 4))
     msg <- ifelse(allsig,
-                  "B-H FDR procedure detects " %,% n.g %,%
+                  "B-H FDR procedure detects " %,% n.g %,% " " %,%
                   "significant genes at FDR=" %,% FDR %,% ":\n",
                   "Top " %,% n.g %,% " Genes: \n")
   }
@@ -593,30 +613,29 @@ function(x, ...){
   th <- x$coefficients
   V.th <- x$variance
   s <- x$shape
-  if(Var.Struct=="general"){
+  if(Var.Struct!="simple"){
     d <- dim(x$rate)[1]
+    J <- c((2*d+1)*exp(th[1]), exp(th[2:(d+1)]))
     upper <- outer(1:d, 1:d, FUN="<=")
     r <- x$rate[upper]
-    J <- c((2*d+1)*exp(th[1]), exp(th[2:(d+1)]))
     if(d>1) J <- c(J, rep(1, d*(d-1)/2))
+    ij <- outer(1:d, 1:d, FUN="%,%")[upper]
+    r.nms <- "rate" %,% ij      
     J <- diag(J)
     V.s.r <- J %*% V.th %*% J
     se <- diag(V.s.r)^0.5
-    npar <- d*(d+1)/2 + 1
-    ij <- outer(1:d, 1:d, FUN="%,%")[upper]
-    r.nms <- "rate" %,% ij
   }
   if(Var.Struct=="simple"){
     r <- x$rate
     J <- diag(exp(th))
     V.s.r <- J %*% V.th %*% J
     se <- diag(V.s.r)^0.5
-    npar <- 2
     r.nms <- "rate"
   }
   coefs <- c(s, r)
-  tbl <- cbind(coefs, se, 1-pnorm(coefs/se))
+  tbl <- cbind(coefs, se, 2*(1-pnorm(abs(coefs/se))))
   dimnames(tbl) <- list(c("shape", r.nms), c("est.","std.err","p-val"))
+  print(x$call)
   print(tbl)
   invisible(x)
 }
@@ -628,8 +647,8 @@ function(x, ...)
   n.x <- length(x)
   print(top)
   Var.Struct <- x$EBfit$call$Var.Struct
-  m.type <- grep(Var.Struct, c("general", "simple"))
-  m.nm <- c("Wishart/Inverse Wishart", "Chi-Squared/Inverse Gamma")[m.type]
+  m.type <- grep(Var.Struct, c("simple", "general"))
+  m.nm <- c("Multivariate Normal/Inverse Wishart", "Normal/Inverse Gamma")[m.type]
   fit <- x$EBfit  
   cat("\n\n" %,% m.nm %,% " model fit: \n")
   print(fit)

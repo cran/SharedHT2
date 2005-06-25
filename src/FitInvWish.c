@@ -12,21 +12,21 @@ typedef struct{
 typedef double optimfn(int n, double *par, void *ex);
 typedef void optimgr(int n, double *par, double *gr, void *ex);
 
-void tloglik(double *ptheta, double *MVM, long *pN, long *pd,
-	     long *pnreps, double *pans);
+void tloglik(double *ptheta, double *MVM, long *pN, long *pd, 
+             long *pnreps, double *pans);
 
-void tGloglik(double *ptheta, double *MVM, long *pN, long *pd, long *pnreps,
-	      double *pG);
+void tGloglik(double *ptheta, double *MVM, long *pN, long *pd, 
+              long *pnreps, double *pG);
 
 void nmmin(int n, double *xin, double *x, double *Fmin, optimfn fn,
            int *fail, double abstol, double intol, void *ex,
            double alpha, double beta, double gamma, int trace,
            int *fncount, int maxit);
 
-void vmmin(int n, double *x, double *Fmin,
-           optimfn fn, optimgr gr, int maxit, int trace,
-           int *mask, double abstol, double reltol, int nREPORT,
-           void *ex, int *fncount, int *grcount, int *fail);
+void vmmin(int n, double *x, double *Fmin, optimfn fn, optimgr gr, 
+           int maxit, int trace, int *mask, double abstol, 
+           double reltol, int nREPORT, void *ex, int *fncount, 
+           int *grcount, int *fail);
 
 void fHESS(double *x, Data *y, double *G, double *H, optimgr *grad);
 
@@ -42,9 +42,9 @@ optimfn loglik;
 optimgr Gloglik, *grad;
 
 void FitInvWish(double *ptheta0, double *MVM, long *pN, long *pd,
-		long *pnreps, long *pverbose, double *objval,
-		double *estimate, double *estimater, long *fail, long *fncnt,
-		long *grcnt, long *mask, long *usegr, double *G, double *H)
+		long *pnreps, long *pverbose, double *objval, 
+                double *estimate, long *fail, long *fncnt, long *grcnt, 
+                long *mask, long *usegr, double *G, double *H)
 {
   long npar, d, d2, N, i;
   int inpar, *ifail, *ifncnt, *igrcnt, *imask, verb;
@@ -73,12 +73,9 @@ void FitInvWish(double *ptheta0, double *MVM, long *pN, long *pd,
   y->nreps = pnreps;
 
   *estimate = 0.0;
-  *estimater = 0.0;
 
-  for(i=1;i<npar;i++) {
-    *(estimate+i) = 0.0;
-    *(estimater+i) = 0.0;
-  }
+  for(i=1;i<npar;i++) *(estimate+i) = 0.0;
+
   if(*usegr==0){
     nmmin(inpar, ptheta0, estimate, objval, loglik, ifail, -1e200, 1e-8, y,
           1.0, 0.5, 2.0, verb, ifncnt, 10000);
@@ -94,12 +91,13 @@ void FitInvWish(double *ptheta0, double *MVM, long *pN, long *pd,
   Gloglik(inpar, estimate, G, y);
   grad = &Gloglik;
   fHESS(estimate, y, G, H, grad);
+
   Free(y);
 }
 
 double loglik(int p, double *theta, void *yy)
 {
-  long N, d, d2, npar, npar2, h, i, j, k, l;
+  long N, d, d2, h, i, j, k, l;
   double xd, xnreps, nu, detL, detS, detSplL, u, v, logl, logK;
 
   long *nreps, *pd;
@@ -112,8 +110,6 @@ double loglik(int p, double *theta, void *yy)
   pd = (y->pd);
   d = *pd;
   nreps = y->nreps;
-  npar = d*(d+1)/2 + 1;
-  npar2 = npar*npar;
   d2 = d*d;
   xd = (double) d;
 
@@ -446,8 +442,8 @@ void tdet(double *x, double *xd2buff, long *pd, double *pans)
 	*pans = det(x, xd2buff, pd);
 }
 
-void tloglik(double *ptheta, double *MVM, long *pN, long *pd,
-	     long *pnreps, double *pans)
+void tloglik(double *ptheta, double *MVM, long *pN, long *pd, 
+             long *pnreps, double *pans)
 {
   Data *y;
   int inpar;
@@ -467,8 +463,8 @@ void tloglik(double *ptheta, double *MVM, long *pN, long *pd,
   Free(y);
 }
 
-void tGloglik(double *ptheta, double *MVM, long *pN, long *pd, long *pnreps,
-              double *pG)
+void tGloglik(double *ptheta, double *MVM, long *pN, long *pd, 
+              long *pnreps, double *pG)
 {
   Data *y;
   long d, npar;
@@ -494,7 +490,7 @@ void fHESS(double *x, Data *y, double *G, double *H, optimgr *grad)
   double h,temp,*G1;
   int inpar;
 
-  d = *y->pd;
+  d = *(y->pd);
   npar = d*(d+1)/2 + 1;
   inpar = (int) npar;
   G1 = (double *)Calloc(npar, double);
