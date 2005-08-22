@@ -1,26 +1,26 @@
-\name{SimOnenu.mix}
-\alias{SimOnenu.mix}
+\name{SimOneMVN.mxIW}
+\alias{SimOneMVN.mxIW}
 \title{Simulate a micro-array experiment dataset}
 \description{
-  \code{SimOnenu.mix} generates a single simulated micro-array expression 
-  experiment under the Wishart/mixed Inverse Wishart model. This can be used
-  to generate a variety of example datasets which violate the assumptions
-  of the Wishart/Inverse Wishart model.  See the documentation for 
-  \code{Simnu.mix} for more details (type ?Simnu.mix).}
+  \code{SimOneMVN.mxIW} generates a single simulated micro-array expression 
+  experiment under the Multivariate Normal/mixed Inverse Wishart model. This
+  can be used to generate a variety of example datasets which violate the 
+  assumptions of the Multivariate Normal/Inverse Wishart model.  See the 
+  documentation for \code{SimMVN.mxIW} for more details (type ?SimMVN.mxIW).}
 }
 
 \usage{
-  SimOnenu.mix(nu = NULL, Lambda = NULL, theta = NULL, f1f2 = c(1/4, 1/2),
-               nreps, Ngenes, effect.size)
+  SimOneMVN.mxIW(shape = NULL, rate = NULL, theta = NULL, f1f2 = c(1/4, 1/2),
+                 nreps, Ngenes, effect.size)
 }
 \arguments{
-  \item{nu}{The shape parameter for the Inverse Wishart distribution with equal
+  \item{shape}{The shape parameter for the Inverse Wishart distribution with equal
     averaged-over-genes group variance.}
-  \item{Lambda}{The rate parameter matrix, of dimension \code{d} by \code{d}
+  \item{rate}{The rate parameter matrix, of dimension \code{d} by \code{d}
     where \code{d} is the number of experimental groups.}
-  \item{theta}{Alternatively to specifying \code{nu} and \code{Lambda}
+  \item{theta}{Alternatively to specifying \code{shape} and \code{rate}
     above, the user can directly specify the model parameters from which
-    \code{nu} and \code{Lambda} are computed.  Type ?EBfit for more details.}
+    \code{shape} and \code{rate} are computed.  Type ?EBfit for more details.}
   \item{nreps}{Number of replicates per group.}
   \item{Ngenes}{Number of rows (or genes) in the dataset (micro-array experiment)}
   \item{effect.size}{A vector of length \code{Ngenes} giving the effect size. 
@@ -32,10 +32,10 @@
   \item{f1f2}{A vector of length 2 containing strictly increasing values between 
     0 and 1.  These are additional parameters specifying the mixing proportion for
     the discrete two component mixture and the proportion of the fractional part
-    of \code{nu/(2*d+2)} specifying the amount by which one of the two shape
+    of \code{shape/(2*d+2)} specifying the amount by which one of the two shape
     parameters should exceed 1.  The other shape parameter is derived so that
     the averaged-over-genes group variances are equal to their values under the
-    corresponding Wishart/Inverse Wishart model.}
+    corresponding Multivariate Normal/Inverse Wishart model.}
 }
 
 \value{
@@ -47,18 +47,21 @@
 \author{Grant Izmirlian \email{izmirlian@nih.gov}}
 
 \seealso{\code{\link{EB.Anova}}, \code{\link{EBfit}}, \code{\link{SimAffyDat}},
-         \code{\link{TopGenes}}, \code{\link{Simnu.mix}}
+         \code{\link{TopGenes}}, \code{\link{SimNorm.IG}}, \code{\link{SimMVN.IW}},
+         \code{\link{SimMVN.mxIW}}, \code{\link{SimOneNorm.IG}}, 
+         \code{\link{SimOneMVN.IW}} 
 }
 
 \examples{
-  nu <- 9.107182
-  Lambda <- matrix(c(0.12789434, 0.08468535, 0.08468535, 0.12390469), 2, 2)
+  shape <- 9.107182
+  rate <- matrix(c(0.12789434, 0.08468535, 0.08468535, 0.12390469), 2, 2)
   Ngenes <- 12625
   nreps <- 3
   nTP <- 100
+  effect.size <- c(rep(7.5/nreps^{0.5}, nTP), rep(0, Ngenes-nTP))
 
-  MyDat <- SimOnenu.mix(nu=nu, Lambda=Lambda, Ngenes=Ngenes, nreps=nreps, 
-                        effect.size=c(rep(7.5/nreps^{0.5}, nTP), rep(0, Ngenes-nTP)))
+  MyDat <- SimOneMVN.mxIW(shape=shape, rate=rate, Ngenes=Ngenes, nreps=nreps, 
+                          effect.size=effect.size)
 
 # notice the names given to the columns by default:
 

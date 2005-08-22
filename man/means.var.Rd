@@ -4,7 +4,8 @@
 \description{Calculate the vector of group means and empirical
  variance/covariance matrix}
 \usage{
- means.var(data, labels, subset)
+ means.var(data, labels, subset, H0 = NULL, Var.Struct = NULL,
+                 na.action = na.pass)
 }
 \arguments{
   \item{data}{data frame containing the logged (base 2 or
@@ -25,7 +26,14 @@
     supplied. In the example above, \code{labels =
       c("log2.grp1", "log2.grp2")}}
   \item{subset}{an index vector indicating which rows should be used.
-    (NOTE: If given, this argument must be named.)}  
+    (NOTE: If given, this argument must be named.)}
+  \item{H0}{Form of null hypothesis for calls from inside of
+    EB.Anova. These arguments are neccesary so that missingness is
+    handled consistently. If calling yourself just specify the blank
+    string ""}
+  \item{Var.Struct}{The \code{Var.Struct} argument from EB.Anova. See
+    above.}
+  \item{na.action}{See above}
 }
  
 \value{
@@ -37,8 +45,11 @@
 }
 \author{Grant Izmirlian \email{izmirlian@nih.gov}}
 
-\seealso{\code{\link{EB.Anova}}, \code{\link{SimAffyDat}} \code{\link{TopGenes}}, 
-         \code{\link{SimOneW.IW}}, \code{\link{SimOnenu.mix}}
+\seealso{\code{\link{EB.Anova}}, \code{\link{EBfit}}, \code{\link{SimAffyDat}},
+         \code{\link{TopGenes}}, \code{\link{SimNorm.IG}},
+         \code{\link{SimMVN.IW}}, \code{\link{SimMVN.mxIW}}, 
+         \code{\link{SimOneNorm.IG}}, \code{\link{SimOneMVN.IW}},
+         \code{\link{SimOneMVN.mxIW}}
 }
 
 \note{Under the Wishart/Inverse Wishart Bayesian model, the expected
@@ -53,7 +64,6 @@
                              H0="zero.means", Var.Struct = "general")
   mv.SimAffyDat <- EBfit(fit.SimAffyDat)
   mv.SimAffyDat$call[[1]] <- as.name("means.var")
-  mv.SimAffyDat$call$H0 <- mv.SimAffyDat$call$Var.Struct <- NULL
   mv.SimAffyDat <- update(mv.SimAffyDat)
 
   d <- dim(mv.SimAffyDat$mean)[2]
@@ -63,4 +73,3 @@
 }
 
 \keyword{utilities}
-

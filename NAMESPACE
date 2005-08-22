@@ -1,7 +1,7 @@
 useDynLib(SharedHT2)
-export(EB.Anova, EBfit, TopGenes, SimW.IW, Simnu.mix, SimOneW.IW,
-       SimOnenu.mix, find.ncp, genecards, shape.rate, means.var,  "%,%", 
-       ShHT2News)
+export(EB.Anova, EBfit, TopGenes, SimNorm.IG, SimMVN.IW, SimMVN.mxIW, 
+       SimOneNorm.IG, SimOneMVN.IW, SimOneMVN.mxIW, find.ncp, genecards, 
+       shape.rate, shape.rate.inv, means.var, "%,%", ShHT2News)
 S3method(print, fit.n.data)
 S3method(summary, fit.n.data)
 S3method(update, fit.n.data)

@@ -74,8 +74,11 @@
 
 \author{Grant Izmirlian \email{izmirlian@nih.gov}}
 
-\seealso{\code{\link{EB.Anova}}, \code{\link{EBfit}}, \code{\link{SimAffyDat}}, 
-         \code{\link{SimW.IW}}, \code{\link{Simnu.mix}}
+\seealso{\code{\link{EB.Anova}}, \code{\link{EBfit}}, \code{\link{SimAffyDat}},
+         \code{\link{TopGenes}}, \code{\link{SimNorm.IG}},
+         \code{\link{SimMVN.IW}}, \code{\link{SimMVN.mxIW}}, 
+         \code{\link{SimOneNorm.IG}}, \code{\link{SimOneMVN.IW}},
+         \code{\link{SimOneMVN.mxIW}}
 }
 
 \note{The print method for class \code{fit.n.data} contains a call to 

@@ -8,40 +8,36 @@ void rnormn(long *pn, double *ans);
 void printmat(double *pA, long nr, long nc, char *name);
 double chol(double *, double *, long *);
 
-void SimOneW_IW(double *nu, double *Lbdinvhlf, long *pd, long *pnreps,
+void SimOneMVN_IW(double *nu, double *Lbdinvhlf, long *pd, long *pnreps,
                long *pN, double *es, double *YY)
 {
-  long i, j, k, l, d, npar, npar2, d2, d4, N, nreps;
+  long i, j, k, l, d, npar, npar2, d2, N, nreps, mxnreps;
   long *lbuff;
 
-  double mu, xnreps, xN, xd, sm;
+  double mu, xd, sm;
 
   double *df, *pW, *SgmHlf, *xbuff, *Y;
   double *Sigma, *LbdHlf, *sig, *SigInv;
 
   N = *pN;
-  xN = (double)N;
   d = *pd;
   xd = (double) d;
   d2 = d*d;
-  d4 = d2*d2;
-  nreps = *pnreps;
+
+  mxnreps=0;
+  for(l=0;l<N;l++) if(mxnreps < *(pnreps+l)) mxnreps = *(pnreps+l);
 
   lbuff       = (long   *)S_alloc(      1,sizeof(long));
 
-  df          = (double *)S_alloc(      1, sizeof(double));
-  pW          = (double *)S_alloc(     d2, sizeof(double));
-  xbuff       = (double *)S_alloc(      d, sizeof(double));
-  SgmHlf      = (double *)S_alloc(     d2, sizeof(double));
-  Y           = (double *)S_alloc(nreps*d, sizeof(double));
-  Sigma       = (double *)S_alloc(     d2, sizeof(double));
-  SigInv      = (double *)S_alloc(     d2, sizeof(double));
-  LbdHlf      = (double *)S_alloc(     d2, sizeof(double));
-  sig         = (double *)S_alloc(      d, sizeof(double));
-
-  xnreps = (double) nreps;
-  *lbuff = nreps*d;
-  *df = *nu - xd - 1.0;
+  df          = (double *)S_alloc(        1, sizeof(double));
+  pW          = (double *)S_alloc(       d2, sizeof(double));
+  xbuff       = (double *)S_alloc(        d, sizeof(double));
+  SgmHlf      = (double *)S_alloc(       d2, sizeof(double));
+  Y           = (double *)S_alloc(mxnreps*d, sizeof(double));
+  Sigma       = (double *)S_alloc(       d2, sizeof(double));
+  SigInv      = (double *)S_alloc(       d2, sizeof(double));
+  LbdHlf      = (double *)S_alloc(       d2, sizeof(double));
+  sig         = (double *)S_alloc(        d, sizeof(double));
 
   /* NOTE:                                                                           */
   /* this block computes the average std dev over genes from the model               */
@@ -61,6 +57,9 @@ void SimOneW_IW(double *nu, double *Lbdinvhlf, long *pd, long *pnreps,
   GetRNGstate();
 
   for(l=0;l<N;l++){
+    nreps = *(pnreps +l);
+    *lbuff = nreps * d;
+    *df = *nu - xd - 1.0;
 
     /*
     /* First an InvWish_d(nu, Lambda) matrix.  This is done                             */
@@ -93,7 +92,7 @@ void SimOneW_IW(double *nu, double *Lbdinvhlf, long *pd, long *pnreps,
       }
       for(j=0;j<d;j++) *(Y + d*i + j) = *(xbuff + j) + *(es + l)*(*(sig + j));
     }
-    for(i=0;i<(nreps*d);i++) *(YY + nreps*d*l + i) = *(Y+i);
+    for(i=0;i<(nreps*d);i++) *(YY + mxnreps*d*l + i) = *(Y+i);
   }
   PutRNGstate();
 }

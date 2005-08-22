@@ -22,7 +22,7 @@
 
   EB.Anova(data, labels, H0 = "equal.means", Var.Struct = "general",
            verbose = TRUE, subset, theta0 = NULL, gradient = FALSE, 
-           fit.only = FALSE)
+           fit.only = FALSE, na.action = na.pass)
 }
 \arguments{
   \item{data}{a data frame containing the logged (base 2 or
@@ -72,6 +72,10 @@
   \item{fit.only}{set to \code{TRUE} if you only want the result of the
     model fit and not the list of per gene statistics. Set to
     \code{FALSE} by default.}
+  \item{na.action}{set to \code{na.pass} if you want \code{NA}'s to be
+    treated as missing at random. This works as long as all genes have
+    the minimum of replicates required for the particular null
+    hypothesis specified}
 }
 
 \value{
@@ -103,8 +107,11 @@
 }
 \author{Grant Izmirlian \email{izmirlian@nih.gov}}
 
-\seealso{\code{\link{EBfit}}, \code{\link{SimAffyDat}}, \code{\link{TopGenes}}, 
-         \code{\link{SimW.IW}}, \code{\link{Simnu.mix}}
+\seealso{\code{\link{EB.Anova}}, \code{\link{EBfit}}, \code{\link{SimAffyDat}},
+         \code{\link{TopGenes}}, \code{\link{SimNorm.IG}},
+         \code{\link{SimMVN.IW}}, \code{\link{SimMVN.mxIW}}, 
+         \code{\link{SimOneNorm.IG}}, \code{\link{SimOneMVN.IW}},
+         \code{\link{SimOneMVN.mxIW}}
 }
 
 \examples{

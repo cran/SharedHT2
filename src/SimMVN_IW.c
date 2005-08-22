@@ -1,4 +1,4 @@
-/* SimW_IW simulates data directly off the Wishart/Inverse Wishart               */
+/* SimMVN_IW simulates data directly off the Wishart/Inverse Wishart               */
 /* model (see equation 1 below).  It was designed to compare the ShHT2           */
 /* statistic's performance with several other statistics, the HT2, the           */
 /* ShUT2, and the UT2 (see manuscript).                                          */
@@ -82,20 +82,20 @@ void rnormn(long *pn, double *ans);
 
 void printmat(double *pA, long nr, long nc, char *name);
 
-void FitInvWish1(double *ptheta0, long *pverbose, Data *y, double *objval, 
+void Fit_MVF1(double *ptheta0, long *pverbose, Data *y, double *objval, 
 		 double *estimate, long *fail, long *fncnt, long *grcnt, 
                  long *mask, long *usegr, double *G, double *H);
 
-void FitEqualVar1(double *ptheta0, long *pverbose, DataEV *y, double *objval, 
+void Fit_F1(double *ptheta0, long *pverbose, DataEV *y, double *objval, 
                   double *estimate, long *fail, long *fncnt, long *grcnt, 
                   long *mask, long *usegr, double *G, double *H);
 
 void printglist(gene *x, long N, char *strng);
 
-void SimW_IW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask, 
-             long *usegr, long *pnsim, double *nu, double *Lbdinvhlf, long *pd, 
-             long *pnreps, long *pN, double *es, double *coef, double *coefEV, 
-             double *FDRlist, long *pnFDRlist, double *fdrtbl, double *roctbl)
+void SimMVN_IW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask, 
+               long *usegr, long *pnsim, double *nu, double *Lbdinvhlf, long *pd, 
+               long *pnreps, long *pN, double *es, double *coef, double *coefEV, 
+               double *FDRlist, long *pnFDRlist, double *fdrtbl, double *roctbl)
 {
   long i, j, k, l, d, npar, npar2, d2, d4, N, nreps, mxnreps, nsim, isim, indx;
   long ntruepos, nFDRlist, flagsig, Nsig, nTP, nFP;
@@ -105,13 +105,14 @@ void SimW_IW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
   double mu, xnreps, xN, xd, sm, smEV, xn2, nu_isim, r, s, vamx, sgn, xl;
   double Top, stat1, stat2, stat3, stat4, pval1, pval2, pval3, pval4;
 
-  double *df, *pW, *SgmHlf, *xbuff, *muhat, *res, *Sighat, *WSSQ, *ptheta0, *rFDR;
-  double *objv, *estimate, *G, *H, *Y, *Sigma, *Lambda_isim, *LbdHlf, *sig, *SigInv;
+  double *df, *pW, *SgmHlf, *xbuff, *x2buff, *muhat, *res, *Sighat;
+  double *WSSQ, *ptheta0, *rFDR, *objv, *estimate, *G, *H, *Y, *Sigma, *Lambda_isim;
+  double *LbdHlf, *sig, *SigInv;
 
   Data *y;
   DataEV *yEV;
   gene *genelist;
-  FILE *itfnm_ptr, *dtfl_ptr;
+  FILE *itfnm_ptr;
   char *ch;
   char *alnu;
 
@@ -129,15 +130,17 @@ void SimW_IW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
   mxnreps=0;
   for(l=0;l<N;l++) if(mxnreps < *(pnreps+l)) mxnreps = *(pnreps+l);
 
-  lbuff       = (long   *)S_alloc(        1,sizeof(long));
-  pnpar       = (long   *)S_alloc(        1,   sizeof(long));
+
+  lbuff       = (long   *)S_alloc(        1, sizeof(  long));
+  pnpar       = (long   *)S_alloc(        1, sizeof(  long));
 
   df          = (double *)S_alloc(        1, sizeof(double));
   pW          = (double *)S_alloc(       d2, sizeof(double));
   xbuff       = (double *)S_alloc(        d, sizeof(double));
+  x2buff      = (double *)S_alloc(       d2, sizeof(double));
   SgmHlf      = (double *)S_alloc(       d2, sizeof(double));
   muhat       = (double *)S_alloc(      N*d, sizeof(double));
-  res         = (double *)S_alloc(       d2, sizeof(double));
+  res         = (double *)S_alloc(mxnreps*d, sizeof(double));
   Sighat      = (double *)S_alloc(     N*d2, sizeof(double));
   WSSQ        = (double *)S_alloc(        N, sizeof(double));
   ptheta0     = (double *)S_alloc(     npar, sizeof(double));
@@ -152,12 +155,12 @@ void SimW_IW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
   LbdHlf      = (double *)S_alloc(       d2, sizeof(double));
   sig         = (double *)S_alloc(        d, sizeof(double));
   rFDR        = (double *)S_alloc(        N, sizeof(double));
-  itfnm       = (char   *)S_alloc(      100, sizeof(char));
-  alnu        = (char   *)S_alloc(       62, sizeof(char));
-  ch          = (char   *)S_alloc(        2, sizeof(char));
-  y           = (Data   *)S_alloc(        1, sizeof(Data));
+  itfnm       = (char   *)S_alloc(      100, sizeof(  char));
+  alnu        = (char   *)S_alloc(       62, sizeof(  char));
+  ch          = (char   *)S_alloc(        2, sizeof(  char));
+  y           = (Data   *)S_alloc(        1, sizeof(  Data));
   yEV         = (DataEV *)S_alloc(        1, sizeof(DataEV));
-  genelist    = (gene   *)S_alloc(        N, sizeof(gene));
+  genelist    = (gene   *)S_alloc(        N, sizeof(  gene));
 
   alnu = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   *(ch+1) = '\0';
@@ -205,13 +208,6 @@ void SimW_IW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
   /*start of simulation loop: (no simulation loop just yet...just try one rep first  */
   for(isim=0;isim<nsim;isim++){
 
-    if(isim>0){
-      system("rm DATFILE");
-    }
-    dtfl_ptr = fopen("DATFILE", "w+");
-
-    rewind(itfnm_ptr);
-
     for(l=0;l<N;l++){  
 
       /*                                                                                  */
@@ -247,34 +243,30 @@ void SimW_IW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
 	  for(k=0;k<d;k++) sm += (*(SgmHlf +d*j +k))*(*(Y +d*i +k));
 	  *(xbuff+j) = sm;
 	}
-	for(j=0;j<d;j++) *(Y + d*i + j) = *(xbuff + j) + *(es + l)*(*(sig + j));
+	for(j=0;j<d;j++) *(Y + d*i + j) = *(xbuff + j) + (*(es + l))*(*(sig + j));
       }
 
-      for(j=0;j<nreps*d;j++) fprintf(dtfl_ptr, "%g ", *(Y + j));
-      fprintf(dtfl_ptr, "\n");
-
       /* compute per gene sample mean and residuals             */
-      for(j=0;j<d;j++){
+      for(i=0;i<d;i++){
 	sm = 0.0;
-	for(i=0;i<nreps;i++) sm += *(Y + d*i + j);
-	*(muhat + d*l + j) = sm/xnreps;
-	for(i=0;i<nreps;i++) *(res+d*i+j) = *(Y +d*i +j) - (*(muhat + d*l + j));
+	for(j=0;j<nreps;j++) sm += *(Y + d*j + i);
+	*(muhat + d*l + i) = sm/xnreps;
+	for(j=0;j<nreps;j++) *(res+d*j+i) = *(Y +d*j +i) - (*(muhat + d*l + i));
       }
 
       /* compute per gene unbiased sample covariance matrix     */
       smEV = 0.0;
-      for(j=0;j<d;j++)
-	for(k=0;k<d;k++){
+      for(i=0;i<d;i++)
+	for(j=0;j<d;j++){
 	  sm = 0.0;
-	  for(i=0;i<nreps;i++)
-	    sm += *(res +d*i +j)*(*(res +d*i +k));
-	  *(Sighat +d2*l +d*k +j) = sm/(xnreps -1.0);
-          if(j==k) smEV += sm;
+	  for(k=0;k<nreps;k++)
+	    sm += *(res +d*k +i)*(*(res +d*k +j));
+	  *(Sighat + d2*l + d*j +i) = sm/(xnreps -1.0);
+          if(i==j) smEV += sm;
 	}
       *(WSSQ + l) = smEV;
     }
 
-    fclose(dtfl_ptr);
 
     /* Fit the model for the marginal distribution of Sighat under the Wishart/Inverse Wishart */
 
@@ -284,7 +276,7 @@ void SimW_IW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
     y->nreps = pnreps;
 
     for(l=0;l<npar;l++) *(ptheta0 + l) = 0.0;
-    FitInvWish1(ptheta0, verb, y, objv, estimate, fail, fncnt, grcnt, 
+    Fit_MVF1(ptheta0, verb, y, objv, estimate, fail, fncnt, grcnt, 
                 mask, usegr, G, H);
 
     /* Store the coefficient estimates for all simulation rounds:                              */
@@ -317,7 +309,7 @@ void SimW_IW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
     yEV->nreps = pnreps;
 
     for(l=0;l<2;l++) *(ptheta0 + l) = 0.0;
-    FitEqualVar1(ptheta0, verb, yEV, objv, estimate, fail, fncnt, grcnt, mask, usegr, G, H);
+    Fit_F1(ptheta0, verb, yEV, objv, estimate, fail, fncnt, grcnt, mask, usegr, G, H);
 
     /* Store the coefficient estimates for all simulation rounds:             */
     for(l=0;l<2;l++) *(coefEV + 2*isim + l) = *(estimate + l);
@@ -364,22 +356,22 @@ void SimW_IW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
       }
       sm=0.0;
       for(k=0;k<d;k++) sm += *(xbuff + k) * (*(muhat + d*l + k));
-      xn2 = xnreps - xd + 1.0;
+      xn2 = xnreps - xd;
       stat2 = xnreps * sm * xn2/xd;
       pval2 = pf(stat2, xd, xn2, 0, 0);
 
       /*shared variance univariate T2  */
       sm = 0.0;
       for(k=0;k<d;k++) sm+= (*(muhat + d*l + k))*(*(muhat + d*l + k));
-      Top = (xnreps*xd-1.0)*(*(WSSQ+l)) + xnreps*sm;
-      stat3 = Top/(2.0*r + (xnreps*xd-1.0)*(*(WSSQ+l)));
-      stat3 = (2.0*s+xd*(xnreps-1.0))/(xnreps*xd)*stat3;
-      pval3 = pf(stat3, xnreps*xd, 2.0*s + xd*(xnreps-1.0), 0, 0);
+      Top = xnreps*xnreps*sm;
+      stat3 = Top/(2.0*r + *(WSSQ+l));
+      stat3 = (2.0*s+xnreps-xd)/xd*stat3;
+      pval3 = pf(stat3, xd, 2.0*s + xnreps-xd, 0, 0);
 
       /*ordinary univariate T2  */
       stat4 = Top/(*(WSSQ+l));
-      stat4 = (xd*(xnreps-1.0))/(xnreps*xd)*stat4;
-      pval4 = pf(stat4, xnreps*xd, xd*(xnreps-1.0), 0, 0);
+      stat4 = (xnreps-xd)/xd*stat4;
+      pval4 = pf(stat4, xd, xnreps-xd, 0, 0);
 
       (genelist + l)->id = l;
       (genelist + l)->mean = vamx*sgn;
@@ -520,12 +512,13 @@ void SimW_IW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
     fprintf(itfnm_ptr, "isim=%d, nu=%g, L=",isim, nu_isim);
     for(i=0;i<d2;i++) fprintf(itfnm_ptr, "%g, ",*(Lambda_isim+i));
     fprintf(itfnm_ptr,"s=%g, r=%g\n",s,r);
+    rewind(itfnm_ptr);
   }
-  fclose(itfnm_ptr);
   PutRNGstate();
+  fclose(itfnm_ptr);
 }
 
-void FitInvWish1(double *ptheta0, long *pverbose, Data *y, double *objval, 
+void Fit_MVF1(double *ptheta0, long *pverbose, Data *y, double *objval, 
 		 double *estimate, long *fail, long *fncnt, long *grcnt, 
                  long *mask, long *usegr, double *G, double *H)
 {
@@ -562,7 +555,7 @@ void FitInvWish1(double *ptheta0, long *pverbose, Data *y, double *objval,
   fHESS(estimate, y, G, H, grad);
 }
 
-void FitEqualVar1(double *ptheta0, long *pverbose, DataEV *y, double *objval, 
+void Fit_F1(double *ptheta0, long *pverbose, DataEV *y, double *objval, 
                   double *estimate, long *fail, long *fncnt, long *grcnt, 
                   long *mask, long *usegr, double *G, double *H)
 {

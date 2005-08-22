@@ -1,13 +1,15 @@
 "EB.Anova" <-
 function(data, labels, H0 = "equal.means", Var.Struct = "general",
          verbose = TRUE, subset, theta0 = NULL, gradient = FALSE,
-         fit.only = FALSE)
+         fit.only = FALSE, na.action = na.pass)
 {
   m <- .call. <- match.call()
   if(missing(Var.Struct)) {
     Var.Struct <- "general"
     .call.$Var.Struct <- Var.Struct
   }
+  if(missing(na.action) & any(is.na(data)))
+    stop("Missing values in your data--re-run using na.action=na.pass")
   vs <- charmatch(Var.Struct, c("simple", "general"), 0)
   if(vs == 0)
     stop("Argument 'Var.Struct' must be \"simple\" or \"general\"")
@@ -52,7 +54,7 @@ function(data, labels, H0 = "equal.means", Var.Struct = "general",
 
 "SharedHT2" <- 
 function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
-         theta0 = NULL, gradient = FALSE, fit.only = FALSE)
+         theta0 = NULL, gradient = FALSE, fit.only = FALSE, na.action=na.pass)
 {
   nms <- names(data)
   m <- .call. <- match.call()
@@ -68,21 +70,66 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
   N <- gnum
   p <- clnum
   n <- length(grep(labels[1], nms))
-  mu.g <- matrix(NA, N, p)
-  var.g <- matrix(NA, N, p^2)
-  #find within group mean variance and sample size
-  all.cols <- NULL
+
   Terms <- attr(m, "terms")
   Y <- model.matrix(Terms, m)[, -1, drop = F]
+
+  # Balancing the data
+  balcd.rows <- rep(FALSE, N)
+  tr.ind <- c(outer(n*(0:(p-1)), 1:n, FUN="+"))
+  tr.tr.ind <- c(outer(p*(0:(n-1)), 1:p, FUN="+"))
+  Y.tr <- Y[, tr.ind]
+  balcd.repls <- matrix(0, N, n)
+  for(i in 1:n){
+    balcd.repl.i <- c(apply(Y.tr[, p*(i-1) + (1:p)], 1, FUN=function(x)any(is.na(x))))
+    Y.tr[, p*(i-1) + (1:p)] <- Y.tr[, p*(i-1) + (1:p)]*(c(1, NA)[1+1*balcd.repl.i])
+    balcd.repls[,i] <- balcd.repl.i
+    balcd.rows <- balcd.rows | balcd.repl.i
+  }
+  Y <- Y.tr[,tr.tr.ind]
+  balcd.rows <- which(balcd.rows)
+  N.balcd.rows <- length(balcd.rows)
+  nreps <- apply(Y[, 1:n], 1, FUN=function(x)sum(!is.na(x)))
+
+  h0 <- charmatch(H0, c("no.trend","equal.means","zero.means"), 0)
+  if(h0==3) not.enough <- nreps <= p
+  if(h0==2) not.enough <- nreps <= (p-1)
+  if(h0==1) not.enough <- nreps < 2
+  if(H0=="user") not.enough <- nreps <= qr(M)$rank
+
+  drop.inds <- which(not.enough)
+  N.dr <- length(drop.inds)
+  if(N.dr>0){
+    N <- N - N.dr
+    nreps <- nreps[-drop.inds]
+    id <- id[-drop.inds]
+    Y <- Y[-drop.inds,]
+  }
+  msg1 <- msg2 <- NULL
+  if(N.balcd.rows > 0) {
+      msg1 <- strwrap("Balanced the data by removing all elements of a replicate containing " %,% 
+                      "one or more missing group observations in " %,% N.balcd.rows %,% " " %,%
+                      "rows.  See the component 'balanced.rows' in the function value " %,% 
+                      "for details.")
+  }
+  if(N.dr > 0) {
+      msg2 <- strwrap("Dropped " %,% N.dr %,% " rows due sample size less than " %,%
+                      "rank(Contrasts).  See the component 'dropped.rows' in " %,%
+                      "the function value for details.\n")
+  }
+
+  mu.g <- matrix(NA, N, p)
+  var.g <- matrix(NA, N, p^2)
+
   for(i in 1:p) {
-    mu.g[, i] <- rowMeans(Y[, n * (i - 1) + (1:n)], na.rm = T)
+    mu.g[, i] <- rowMeans(Y[, n * (i - 1) + (1:n)], na.rm=T)
     for(j in unique(1:i)) {
       Z.i <- Y[, n * (i - 1) + (1:n)] - mu.g[, i]
       Z.j <- Y[, n * (j - 1) + (1:n)] - mu.g[, j]
-      var.g[, p * (i - 1) + j] <- var.g[, p * (j - 1) + i] <-
-        n/(n - 1) * rowMeans(Z.i * Z.j, na.rm = T)
+      var.g[, p * (i - 1) + j] <- var.g[, p * (j - 1) + i] <- rowMeans(Z.i * Z.j, na.rm=T)*nreps/(nreps-1)
     }
   }
+
   if(H0 == "zero.means") {
     M <- diag(p)
     d <- p
@@ -100,18 +147,29 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
     M <- PI[2,  , drop = F]
     d <- 1
   }
-  if(H0 == "user") d <- qr(M)$rank
+  if(H0 == "user") {
+    if(sum(abs(M - M%*%M)) > 1e-8)
+      stop("User supplied contrasts matrix must be indempotent")
+    rnk <- qr(M)$rank
+    if(rnk < p) {
+      b.5 <- chol(M)
+      M <- b.5[-(rnk+1):p]
+    }
+    d <- rnk
+  }
   if(verbose) {
     cat("You have chosen H0: ", H0, "\n")
     cat("N = ", N, " d = ", d, "\n")
   }
   Ybar <- matrix(mu.g %*% t(M), N, d)
   MVM <- t((M %K% diag(d)) %*% ((diag(p) %K% M) %*% t(var.g)))   
+
+#  return(list(Ybar=Ybar, MVM=MVM, N=N, nreps=nreps, dr=drop.inds))
+
   dimMVM <- dim(MVM)
   npar <- d*(d+1)/2 + 1
   if(missing(theta0)) theta0 <- rep(0, npar)
-  nreps <- rep(n, N)
-  fit <- .C("FitInvWish",
+  fit <- .C("Fit_MVF",
             ptheta0 = as.double(theta0),
             MVM = as.double(t(MVM)),
             pN = as.integer(N),
@@ -129,6 +187,11 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
             H = as.double(rep(0,npar^2)),
             PACKAGE = "SharedHT2")
 #	V.theta <- matrix(0, npar, npar)
+  if(verbose && any(c(!is.null(msg1),!is.null(msg2)))){
+    cat(msg1 %,% "\n")
+    cat("\n")
+    cat(msg2 %,% "\n")
+  }
   theta <- fit$estimate
   V.theta <- solve(matrix(fit$H,npar,npar))
   nu <- (2*d + 2)*(exp(theta[1])+1)
@@ -142,16 +205,16 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
   if(d == 1) Lambda <- Lambda.u <- matrix(exp(theta[-1]), 1, 1)
   if(!fit.only){
     Lambda.N <- t(matrix(c(Lambda), d^2, N))
-    V <- (n - 1) * MVM
+    V <- (nreps - 1) * MVM
     V.i <- matrix(rowInvc(V), N, d^2)
     t1 <- matrix(rowProdc(Ybar, V.i, 1, d), N, d)
-    HT2.stat <- (n - d + 1)/d * n * rowProdc(t1, Ybar, 1, d)
-    HT2.pval <- 1 - pf(HT2.stat, d, n - d + 1)
-    V <- Lambda.N + (n - 1) * MVM
+    HT2.stat <- (nreps - d)/d * nreps * rowProdc(t1, Ybar, 1, d)
+    HT2.pval <- 1 - pf(HT2.stat, d, nreps - d)
+    V <- Lambda.N + (nreps - 1) * MVM
     V.i <- matrix(rowInvc(V), N, d^2)
     t1 <- matrix(rowProdc(Ybar, V.i, 1, d), N, d)
-    ShHT2.stat <- (nu + n - 2 * d - 1)/d * n * rowProdc(t1, Ybar, 1, d)
-    ShHT2.pval <- 1 - pf(ShHT2.stat, d, nu + n - 2 * d - 1)
+    ShHT2.stat <- (nu + nreps - 2 * d - 1)/d * nreps * rowProdc(t1, Ybar, 1, d)
+    ShHT2.pval <- 1 - pf(ShHT2.stat, d, nu + nreps - 2 * d - 1)
     ans <- list()
     ans$data <- as.data.frame(list(GeneId = id, ShHT2.stat = ShHT2.stat,
                               ShHT2.pval = ShHT2.pval, HT2.stat = HT2.stat,
@@ -166,6 +229,13 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
                 stat.names=stat.names)
     class(fit) <- "EBfit"
     ans$EBfit <- fit
+
+    if(N.dr > 0)
+      ans$drop.rows <- drop.inds
+
+    if(N.balcd.rows > 0) 
+      ans$balanced.rows <- balcd.rows
+
     class(ans) <- "fit.n.data"
   }
   else {
@@ -173,6 +243,13 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
                 shape = nu, rate = Lambda, log.likelihood = -1*fit$objval,
                 fail = fit$fail, fncount = fit$fncount, grcount = fit$grcount,
                 mask = fit$mask, usegr = fit$usegr, call=.call.)
+
+    if(N.dr > 0)
+      fit$drop.rows <- drop.inds
+
+    if(N.balcd.rows > 0)
+      fit$balanced.rows <- balcd.rows
+
     class(fit) <- "EBfit"
     ans <- fit
   }
@@ -181,7 +258,7 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
 
 "SharedVar" <- 
   function(data, labels, H0="zero.means", M = NULL, verbose = TRUE, subset, theta0 = NULL,
-           gradient = FALSE, fit.only = FALSE)
+           gradient = FALSE, fit.only = FALSE, na.action=na.pass)
 {
   nms <- names(data)
   m <- .call. <- match.call()
@@ -195,29 +272,67 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
   gnum <- dim(m)[1]
   clnum <- length(labels)
   N <- gnum
-  d <- clnum
+  p <- clnum
   n <- length(grep(labels[1], nms))
-  mu.g <- matrix(NA, N, d)
-  var.g <- matrix(NA, N, d^2)
-  #find within group mean variance and sample size
-  all.cols <- NULL
+
   Terms <- attr(m, "terms")
   Y <- model.matrix(Terms, m)[, -1, drop = F]
+
+  # Balancing the data
+  balcd.rows <- rep(FALSE, N)
+  tr.ind <- c(outer(n*(0:(p-1)), 1:n, FUN="+"))
+  tr.tr.ind <- c(outer(p*(0:(n-1)), 1:p, FUN="+"))
+  Y.tr <- Y[, tr.ind]
+  balcd.repls <- matrix(0, N, n)
+  for(i in 1:n){
+    balcd.repl.i <- c(apply(Y.tr[, p*(i-1) + (1:p)], 1, FUN=function(x)any(is.na(x))))
+    Y.tr[, p*(i-1) + (1:p)] <- Y.tr[, p*(i-1) + (1:p)]*(c(1, NA)[1+1*balcd.repl.i])
+    balcd.repls[,i] <- balcd.repl.i
+    balcd.rows <- balcd.rows | balcd.repl.i
+  }
+  Y <- Y.tr[,tr.tr.ind]
+  balcd.rows <- which(balcd.rows)
+  N.balcd.rows <- length(balcd.rows)
+  nreps <- apply(Y[, 1:n], 1, FUN=function(x)sum(!is.na(x)))
+
+  not.enough <- nreps < 2
+
+  drop.inds <- which(not.enough)
+  N.dr <- length(drop.inds)
+  if(N.dr>0){
+    N <- N - N.dr
+    nreps <- nreps[-drop.inds]
+    id <- id[-drop.inds]
+    Y <- Y[-drop.inds,]
+  }
+  msg1 <- msg2 <- NULL
+  if(N.balcd.rows > 0) {
+      msg1 <- strwrap("Balanced the data by removing all elements of a replicate containing " %,% 
+                      "one or more missing group observations in " %,% N.balcd.rows %,% " " %,%
+                      "rows.  See the component 'balanced.rows' in the function value " %,% 
+                      "for details.")
+  }
+  if(N.dr > 0) {
+      msg2 <- strwrap("Dropped " %,% N.dr %,% " rows due sample size less than " %,%
+                      "rank(Contrasts).  See the component 'dropped.rows' in " %,%
+                      "the function value for details.\n")
+  }
+
+  mu.g <- matrix(NA, N, p)
   S <- rep(0, N)
-  for(i in 1:d) {
+  for(i in 1:p) {
     mu.g[, i] <- rowMeans(Y[, n * (i - 1) + (1:n)], na.rm = T)
     Z.i <- Y[, n * (i - 1) + (1:n)] - mu.g[, i]
-    S <- S + n * rowMeans(Z.i^2, na.rm = T)
+    S <- S + rowMeans(Z.i^2, na.rm = T)*nreps
   }
 
   if(missing(theta0)) theta0 <- rep(0, 2)
-  nreps <- rep(n, N)
   
-  fit <- .C("FitEqualVar",
+  fit <- .C("Fit_F",
             ptheta0 = as.double(theta0),
             S = as.double(S),
             pN = as.integer(N),
-            pd = as.integer(d),
+            pd = as.integer(p),
             pnreps = as.integer(nreps),
             pverbose = as.integer(verbose),
             objval = as.double(0),
@@ -230,37 +345,53 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
             G = as.double(rep(0,2)),
             H = as.double(rep(0,4)),
             PACKAGE = "SharedHT2")
+  if(verbose && any(c(!is.null(msg1),!is.null(msg2)))){
+    cat(msg1 %,% "\n")
+    cat("\n")
+    cat(msg2 %,% "\n")
+  }
   theta <- fit$estimate
   V.theta <- solve(matrix(fit$H,2,2))
   eth <- exp(theta)
   s <- eth[1]
   r <- eth[2]
-  J.n.n <- matrix(1, n, n)
-  J.d.d <- matrix(1, d, d)
-  J.d.1 <- matrix(1, d, 1)
   if(!fit.only){
-    if(H0 == "zero.means") M <- diag(d)
+    if(H0 == "zero.means") {
+      d <- p
+      M <- diag(p)
+    }
     if(H0 == "equal.means") {
-      b <- diag(d) - 1/d * matrix(1, d, d)
+      b <- diag(p) - 1/p * matrix(1, p, p)
       b.5 <- chol(b)
-      b.5 <- b.5[ - d,  ]
+      b.5 <- b.5[ - p,  ]
+      d <- p - 1
       M <- rbind(b.5)
     }
     if(H0 == "no.trend") {
-      x <- cbind(rep(1, d), (1:d))
+      x <- cbind(rep(1, p), (1:p))
       PI <- solve(t(x) %*% x) %*% t(x)
-      M <- (J.d.1/d) %K% (PI[2,  , drop = F])
+      d <- 1
+      M <- PI[2,  , drop = F]
     }
-  
-    rnk <- qr(M)$rank
-    degTop <- ifelse(rnk == d, n*d, rnk)
-    M <- M %K% J.n.n
-    tr.inds <- c(outer(n*(0:(d-1)), 1:n, FUN="+"))
-    Top <- ((Y[,tr.inds] %*% M)*Y) %*% rep(1, n*d)
-    ShUT2.stat <- Top/(2*r + S)*(2*s+d*(n-1))/degTop
-    ShUT2.pval <- 1-pf(ShUT2.stat, degTop, 2*s+d*(n-1))
-    UT2.stat <- Top/S*(d*(n-1))/degTop
-    UT2.pval <- 1-pf(UT2.stat, degTop, d*(n-1))
+
+    if(H0 == "user") {
+      if(sum(abs(M - M%*%M)) > 1e-8)
+        stop("User supplied contrasts matrix must be indempotent")
+      rnk <- qr(M)$rank
+      if(rnk < p) {
+        b.5 <- chol(M)
+        M <- b.5[-(rnk+1):p]
+      }
+      d <- rnk
+    }
+
+    Ybar <- matrix(mu.g %*% t(M), N, d)
+    Top <- nreps^2*((Ybar*Ybar)%*%rep(1,d))
+
+    ShUT2.stat <- Top/(2*r + S)*(2*s + nreps - d)/d
+    ShUT2.pval <- 1-pf(ShUT2.stat, d, 2*s + nreps - d)
+    UT2.stat <- Top/S*(nreps-d)/d
+    UT2.pval <- 1-pf(UT2.stat, d, nreps-d)
     ans <- list()
     ans$data <- as.data.frame(list(GeneId = id, ShUT2.stat = ShUT2.stat,
                               ShUT2.pval = ShUT2.pval, UT2.stat = UT2.stat,
@@ -274,6 +405,13 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
                 usegr = fit$usegr, call=.call., stat.names = stat.names)
     class(fit) <- "EBfit"
     ans$EBfit <- fit
+
+    if(N.dr > 0)
+      ans$drop.rows <- drop.inds
+
+    if(N.balcd.rows > 0) 
+      ans$balanced.rows <- balcd.rows
+
     class(ans) <- "fit.n.data"
   }
   else{
@@ -281,6 +419,13 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
                 shape=s, rate=r, log.likelihood = -1*fit$objval, fail = fit$fail,
                 fncount = fit$fncount, grcount = fit$grcount, mask = fit$mask,
                 usegr = fit$usegr, call=.call.)
+
+    if(N.dr > 0)
+      fit$drop.rows <- drop.inds
+
+    if(N.balcd.rows > 0)
+      fit$balanced.rows <- balcd.rows
+
     class(fit) <- "EBfit"
     ans <- fit
   }
@@ -307,7 +452,7 @@ function (obj, by = "EB", ref = 1, FDR = 0.05, allsig = FALSE, n.g = 20,
   labs <- eval(m$labels)
   labs <- substring(labs, 5, nchar(labs))
   m[[1]] <- as.name("means.var")
-  m$H0 <- m$Var.Struct <- NULL
+  m$theta0 <- m$gradient <- NULL
   m <- eval(m, sys.parent())
   mu <- m$mean
   id <- as.character(obj$GeneId)
@@ -412,6 +557,38 @@ function(object)
   L.5[outer(1:d,1:d,FUN="<")] <- theta[-(1:(d+1))]
   L <- t(L.5)%*%L.5
   list(shape = nu, rate = L)
+}
+
+"shape.rate.inv" <- 
+function(object)
+{
+  cl.o <- class(object)
+  if(cl.o!="list" || length(object) != 2)
+    stop("Argument must be of class 'list' having two components")
+
+  l.1 <- length(object[[1]])
+  l.2 <- length(object[[2]])
+  if(l.1 != 1)
+    stop("First component must be numeric of length 1")
+  if(l.2^0.5 - floor(l.2^0.5) > 1e-8)
+    stop("Second component does not contain a square matrix")
+
+  rate <- object[[2]]
+  if(sum(abs(rate - t(rate))) > 1e-8)
+    stop("Second component is not a symetric square matrix")
+  rate <- (rate + t(rate))/2
+  rate.5 <- chol(rate)
+
+  d <- dim(rate)[1]
+  shape <- object[[1]]
+  th1 <- log(shape/(2*d + 2) - 1)
+
+  ind.upr.dg <- outer(1:d, 1:d, FUN = "<")
+  ans <- c(th1, log(diag(rate.5)), rate.5[ind.upr.dg])
+  ij.dg <- 11*(1:d)
+  ij.off.dg <- outer(1:d, 1:d, FUN = "%,%")[ind.upr.dg]
+  names(ans) <- c("th1", "log(sqrt.rate" %,% ij.dg %,% ")", "sqrt.rate" %,% ij.off.dg)
+  ans
 }
 
 "tlmgamma" <- 
@@ -564,39 +741,84 @@ function(x, path = "", file = "", main = "", id = NULL, search.url = NULL,
 }
 
 "means.var" <- 
-function(data, labels, subset)
+function(data, labels, subset, H0=NULL, Var.Struct=NULL, na.action=na.pass)
 {
-	nms <- names(data)
-	m <- call. <- match.call()
-	m[[1]] <- as.name("model.frame")
-	idx <- c(sapply(labels,FUN=grep, nms))
-	form <- make.form("", nms[idx])
-	m$formula <- form
-	m$labels <- NULL
-	m <- eval(m, sys.parent())
-	id <- dimnames(m)[[1]]
-	gnum <- dim(m)[1]
-	clnum <- length(labels)
-	N <- gnum
-	p <- clnum
-	n <- length(grep(labels[1], nms))
-	mu.g <- matrix(NA, N, p)
-	Y <- matrix(NA, N, n * p)
-	var.g <- matrix(NA, N, p^2)
-	#find within group mean variance and sample size
-	all.cols <- NULL
-	Terms <- attr(m, "terms")
-	Y <- model.matrix(Terms, m)[, -1, drop = F]
-	for(i in 1:p) {
-		mu.g[, i] <- rowMeans(Y[, n * (i - 1) + (1:n)], na.rm = T)
-		for(j in unique(1:i)) {
-			Z.i <- Y[, n * (i - 1) + (1:n)] - mu.g[, i]
-			Z.j <- Y[, n * (j - 1) + (1:n)] - mu.g[, j]
-			var.g[, p * (i - 1) + j] <- var.g[, p * (j - 1) + i] <-
-				n/(n - 1) * rowMeans(Z.i * Z.j, na.rm = T)
-		}
-	}
-	list(mean = mu.g, var = var.g)
+  nms <- names(data)
+  m <- call. <- match.call()
+  m[[1]] <- as.name("model.frame")
+  idx <- c(sapply(labels,FUN=grep, nms))
+  form <- make.form("", nms[idx])
+  m$formula <- form
+  m$labels <- m$H0 <- m$Var.Struct <- NULL
+  m <- eval(m, sys.parent())
+
+  id <- dimnames(m)[[1]]
+  gnum <- dim(m)[1]
+  clnum <- length(labels)
+  N <- gnum
+  p <- clnum
+  n <- length(grep(labels[1], nms))
+
+  Terms <- attr(m, "terms")
+  Y <- model.matrix(Terms, m)[, -1, drop = F]
+
+  # Balancing the data
+  balcd.rows <- rep(FALSE, N)
+  tr.ind <- c(outer(n*(0:(p-1)), 1:n, FUN="+"))
+  tr.tr.ind <- c(outer(p*(0:(n-1)), 1:p, FUN="+"))
+  Y.tr <- Y[, tr.ind]
+  balcd.repls <- matrix(0, N, n)
+  for(i in 1:n){
+    balcd.repl.i <- c(apply(Y.tr[, p*(i-1) + (1:p)], 1, FUN=function(x)any(is.na(x))))
+    Y.tr[, p*(i-1) + (1:p)] <- Y.tr[, p*(i-1) + (1:p)]*(c(1, NA)[1+1*balcd.repl.i])
+    balcd.repls[,i] <- balcd.repl.i
+    balcd.rows <- balcd.rows | balcd.repl.i
+  }
+  Y <- Y.tr[,tr.tr.ind]
+  balcd.rows <- which(balcd.rows)
+  N.balcd.rows <- length(balcd.rows)
+  nreps <- apply(Y[, 1:n], 1, FUN=function(x)sum(!is.na(x)))
+
+  vs <- charmatch(Var.Struct, c("simple", "general"), 0)
+  h0 <- charmatch(H0, c("no.trend","equal.means","zero.means"), 0)
+  if(h0==3 && vs==2) not.enough <- nreps <= p
+  if(h0==2 && vs==2) not.enough <- nreps <= (p-1)
+  if(h0==1 || vs==1) not.enough <- nreps < 2
+  if(H0=="user" && vs==2) not.enough <- nreps <= qr(M)$rank
+
+  drop.inds <- which(not.enough)
+  N.dr <- length(drop.inds)
+  if(N.dr>0){
+    N <- N - N.dr
+    nreps <- nreps[-drop.inds]
+    id <- id[-drop.inds]
+    Y <- Y[-drop.inds,]
+  }
+  if(N.balcd.rows > 0) {
+      msg1 <- strwrap("Balanced the data by removing all elements of a replicate containing " %,% 
+                      "one or more missing group observations in " %,% N.balcd.rows %,% " " %,%
+                      "rows.  See the component 'balanced.rows' in the function value " %,% 
+                      "for details.")
+  }
+  if(N.dr > 0) {
+      msg2 <- strwrap("Dropped " %,% N.dr %,% " rows due sample size less than " %,%
+                      "rank(Contrasts).  See the component 'dropped.rows' in " %,%
+                      "the function value for details.\n")
+  }
+
+  mu.g <- matrix(NA, N, p)
+  var.g <- matrix(NA, N, p^2)
+
+  for(i in 1:p) {
+    mu.g[, i] <- rowMeans(Y[, n * (i - 1) + (1:n)], na.rm = T)
+    for(j in unique(1:i)) {
+      Z.i <- Y[, n * (i - 1) + (1:n)] - mu.g[, i]
+      Z.j <- Y[, n * (j - 1) + (1:n)] - mu.g[, j]
+      var.g[, p * (i - 1) + j] <- var.g[, p * (j - 1) + i] <-
+        n/(n - 1) * rowMeans(Z.i * Z.j, na.rm = T)
+    }
+  }
+  list(mean = mu.g, var = var.g)
 }
 
 "as.data.frame.fit.n.data" <- 
@@ -648,7 +870,7 @@ function(x, ...)
   print(top)
   Var.Struct <- x$EBfit$call$Var.Struct
   m.type <- grep(Var.Struct, c("simple", "general"))
-  m.nm <- c("Multivariate Normal/Inverse Wishart", "Normal/Inverse Gamma")[m.type]
+  m.nm <- c("Normal/Inverse Gamma", "Multivariate Normal/Inverse Wishart")[m.type]
   fit <- x$EBfit  
   cat("\n\n" %,% m.nm %,% " model fit: \n")
   print(fit)
@@ -683,281 +905,426 @@ function(object)
 "update.fit.n.data" <-
 function(object, ...)
 {
-  fit <- object$EBfit
-  update(fit, ...)
+  m <- match.call()
+  m[[1]] <- as.name("update")
+  new.obj <- list(call=object$EBfit$call)
+  m$object <- new.obj
+  eval(m, sys.parent())
+}
+
+"coef.fit.n.data" <- 
+function(object)
+{
+  EBfit(object)$coef
 }
 
 "rowInvc" <- 
 function(x)
 {
-	x <- t(x)
-	dx <- dim(x)
-	if(floor(dx[1]^0.5) != dx[1]^0.5)
-		stop("x must be square")
-	n <- dx[2]
-	nx <- dx[1]^0.5
-	ans <- .C("rowinv",
-		x= as.double(x),
-		z= as.double(rep(0, n * nx^2)),
-		n= as.integer(n),
-		nx= as.integer(nx),
+  x <- t(x)
+  dx <- dim(x)
+  if(floor(dx[1]^0.5) != dx[1]^0.5)
+    stop("x must be square")
+  n <- dx[2]
+  nx <- dx[1]^0.5
+  ans <- .C("rowinv",
+    x= as.double(x),
+    z= as.double(rep(0, n * nx^2)),
+    n= as.integer(n),
+    nx= as.integer(nx),
                 PACKAGE="SharedHT2")[[2]]
-	t(matrix(ans, nx^2, n))
+  t(matrix(ans, nx^2, n))
 }
 
 "rowCholc" <- 
 function(x)
 {
-	x <- t(x)
-	dx <- dim(x)
-	if(floor(dx[1]^0.5) != dx[1]^0.5)
-		stop("x must be square")
-	n <- dx[2]
-	nx <- dx[1]^0.5
-	ans <- .C("rowchol",
-		x = as.double(x),
-		z = as.double(rep(0, n * nx^2)),
-		n = as.integer(n),  
-		nx = as.integer(nx),
+  x <- t(x)
+  dx <- dim(x)
+  if(floor(dx[1]^0.5) != dx[1]^0.5)
+    stop("x must be square")
+  n <- dx[2]
+  nx <- dx[1]^0.5
+  ans <- .C("rowchol",
+    x = as.double(x),
+    z = as.double(rep(0, n * nx^2)),
+    n = as.integer(n),  
+    nx = as.integer(nx),
                 PACKAGE="SharedHT2")[[2]]
-	t(matrix(ans, nx^2, n))
+  t(matrix(ans, nx^2, n))
 }
 
 "rowProdc" <- 
 function(x, y, na1, nb1)
 {
-	dx <- dim(x)
-	dy <- dim(y)
-	if(dx[1] != dy[1])
-		stop("x and y must have same #rows")
-	n <- dx[1]
-	nb2 <- dy[2]/nb1
-	na2 <- dx[2]/na1
-	if(na2 != nb1)
-		stop("Implied Matrices Not of Compatable Dimensions")
-	ans <- .C("rowprod",
-		x= as.double(x),
-		y= as.double(y),
-		z= as.double(rep(0, n * na1 * nb2)),
-		n= as.integer(n),
-		na1= as.integer(na1),
-		nb1= as.integer(nb1),
-		nb2= as.integer(nb2),
+  dx <- dim(x)
+  dy <- dim(y)
+  if(dx[1] != dy[1])
+    stop("x and y must have same #rows")
+  n <- dx[1]
+  nb2 <- dy[2]/nb1
+  na2 <- dx[2]/na1
+  if(na2 != nb1)
+    stop("Implied Matrices Not of Compatable Dimensions")
+  ans <- .C("rowprod",
+    x= as.double(x),
+    y= as.double(y),
+    z= as.double(rep(0, n * na1 * nb2)),
+    n= as.integer(n),
+    na1= as.integer(na1),
+    nb1= as.integer(nb1),
+    nb2= as.integer(nb2),
                 PACKAGE="SharedHT2")[[3]]
-	matrix(ans, n, na1 * nb2)
+  matrix(ans, n, na1 * nb2)
 }
 
-"SimW.IW" <- 
-function(nsim, nu=NULL, Lambda=NULL, theta=NULL, nreps, Ngenes, effect.size,
+"SimNorm.IG" <- 
+function(nsim, shape=NULL, rate=NULL, theta=NULL, ngroups, nreps, Ngenes, effect.size,
          FDRlist = 0.05*(1:5), verbose=F, gradient=F)
 {
-	.call. <- match.call()
-	is.nuL <- !(missing(nu)||missing(Lambda))
-	is.theta <- !missing(theta)
-	if(!is.nuL&&!is.theta) 
-	   stop("Must provide _either_ (i) both 'nu' and 'Lambda' _or_ (ii) 'theta'")
-	if(is.theta) {
-		nuL <- shape.rate(theta)
-		nu <- nuL$shape
-		Lambda <- nuL$rate
-	}
-	d.L <- dim(Lambda)
-	issym <- sum(abs(t(Lambda) - Lambda)==0)
-	if(d.L[1]!=d.L[2]||!issym) stop("'Lambda' must be a square symmetric matrix")
-	Lbdinvhlf <- chol(solve(Lambda))
-	d <- dim(Lambda)[1]
-	d2 <- d^2
-        npar <- d*(d+1)/2 + 1
-	if(length(nreps) == Ngenes) sumnreps <- sum(nreps)
-	else {
-		sumnreps <- Ngenes * nreps[1]
-		nreps <- rep(nreps[1], Ngenes)
-	}
+  .call. <- match.call()
+  is.sr <- !(missing(shape)||missing(rate))
+  is.theta <- !missing(theta)
+  if(!is.sr&&!is.theta) 
+    stop("Must provide _either_ (i) both 'shape' and 'rate' _or_ (ii) 'theta'")
+        if(length(effect.size)!=Ngenes)
+          stop("Argument 'effect.size' must be of length 'Ngenes'")
+        if(length(nreps)!=1 && length(nreps)!=Ngenes)
+          stop("Argument 'nreps' must be of length 1 or of length 'Ngenes'")
+  if(is.theta) {
+    shape <- exp(theta[1])
+    rate <- exp(theta[2])
+  }
+  d <- ngroups
+  d2 <- d^2
+  npar <- d*(d+1)/2 + 1
+  if(length(nreps) > 1) mxnreps <- max(nreps)
+  else {
+    mxnreps <- nreps
+    nreps <- rep(mxnreps, Ngenes)
+  }
         
-        nFDRlist <- length(FDRlist)
+  nFDRlist <- length(FDRlist)
 
-        ans <- .C("SimW_IW",
-                  verb = as.integer(verbose),
-                  fail = as.integer(0),
-                  fncnt = as.integer(0),
-                  grcnt = as.integer(0),
-                  mask = as.integer(0),
-                  usegr = as.integer(gradient),
-                  pnsim = as.integer(nsim),
-                  nu = as.double(nu),
-                  Lbdinvhlf = as.double(Lbdinvhlf),
-                  pd = as.integer(d),
-                  pnreps = as.integer(nreps),
-                  pN = as.integer(Ngenes),
-                  es = as.double(effect.size),
-                  coef = as.double(rep(0,npar*nsim)),
-                  coefEV = as.double(rep(0,2*nsim)),
-                  FDRlist = as.double(FDRlist),
-                  pnFDRlist = as.integer(nFDRlist),
-                  fdrtbl = as.double(rep(0,8*nFDRlist)),
-                  roctbl = as.double(rep(0, 8*Ngenes)),
-                  PACKAGE = "SharedHT2")
-        
-        coef <- t(matrix(ans$coef,npar,nsim))
-        dimnames(coef) <- list(1:nsim, "th" %,% (1:npar))
+  ans <- .C("SimNorm_IG",
+            verb = as.integer(verbose),
+            fail = as.integer(0),
+            fncnt = as.integer(0),
+            grcnt = as.integer(0),
+            mask = as.integer(0),
+            usegr = as.integer(gradient),
+            pnsim = as.integer(nsim),
+            shape = as.double(shape),
+            rate = as.double(rate),
+            pd = as.integer(d),
+            pnreps = as.integer(nreps),
+            pN = as.integer(Ngenes),
+            es = as.double(effect.size),
+            coef = as.double(rep(0,npar*nsim)),
+            coefEV = as.double(rep(0,2*nsim)),
+            FDRlist = as.double(FDRlist),
+            pnFDRlist = as.integer(nFDRlist),
+            fdrtbl = as.double(rep(0,8*nFDRlist)),
+            roctbl = as.double(rep(0, 8*Ngenes)),
+            PACKAGE = "SharedHT2")
+  
+  coef <- t(matrix(ans$coef,npar,nsim))
+  dimnames(coef) <- list(1:nsim, "th" %,% (1:npar))
 
-        coefEV <- t(matrix(ans$coefEV,2,nsim))
-        dimnames(coefEV) <- list(1:nsim, c("s","r"))
+  coefEV <- t(matrix(ans$coefEV,2,nsim))
+  dimnames(coefEV) <- list(1:nsim, c("log(shape)","log(rate)"))
 
-        fdrtbl <- matrix(ans$fdrtbl, nFDRlist, 8)/nsim
-        dimnames(fdrtbl) <- list(signif(FDRlist, 3),
-                              c(t(outer(c("ShHT2","HT2","ShUT2","UT2"),
-                                        c("-TPR","-FPR"), FUN="%,%"))))
-        roctbl <- matrix(ans$roctbl/nsim, Ngenes, 8)
-        dimnames(roctbl) <- list(rep("",Ngenes),
-                             c(t(outer(c("ShHT2","HT2","ShUT2","UT2"),
-                                       c("-TPR","-FPR"), FUN="%,%"))))       
-        
-	list(fdrtbl=fdrtbl, roctbl=roctbl, coef=coef,coefEV=coefEV, call = .call.)
+  fdrtbl <- matrix(ans$fdrtbl, nFDRlist, 8)/nsim
+  dimnames(fdrtbl) <- list(signif(FDRlist, 3),
+                       c(t(outer(c("ShHT2","HT2","ShUT2","UT2"),
+                                 c("-TPR","-FPR"), FUN="%,%"))))
+  roctbl <- matrix(ans$roctbl/nsim, Ngenes, 8)
+  dimnames(roctbl) <- list(rep("",Ngenes),
+                       c(t(outer(c("ShHT2","HT2","ShUT2","UT2"),
+                                 c("-TPR","-FPR"), FUN="%,%"))))
+
+  list(fdrtbl=fdrtbl, roctbl=roctbl, coef=coef,coefEV=coefEV, call = .call.)
 }
 
-"Simnu.mix" <- 
-function(nsim, nu=NULL, Lambda=NULL, theta=NULL, nreps, Ngenes, effect.size,
-         FDRlist = 0.05*(1:5), f1f2 = c(1/4, 1/2), verbose=F, gradient=F)
-{
-	.call. <- match.call()
-	is.nuL <- !(missing(nu)||missing(Lambda))
-	is.theta <- !missing(theta)
-	if(!is.nuL&&!is.theta) 
-	   stop("Must provide _either_ (i) both 'nu' and 'Lambda' _or_ (ii) 'theta'")
-        if(f1f2[1]/f1f2[2] - 1 >=  -1e-10)
-           stop("Ratio f1/f2 must be less than 1.  Try something else !!!")
-	if(is.theta) {
-		nuL <- shape.rate(theta)
-		nu <- nuL$shape
-		Lambda <- nuL$rate
-	}
-	d.L <- dim(Lambda)
-	issym <- sum(abs(t(Lambda) - Lambda)==0)
-	if(d.L[1]!=d.L[2]||!issym) stop("'Lambda' must be a square symmetric matrix")
-	Lbdinvhlf <- chol(solve(Lambda))
-	d <- dim(Lambda)[1]
-	d2 <- d^2
-        npar <- d*(d+1)/2 + 1
-	if(length(nreps) == Ngenes) sumnreps <- sum(nreps)
-	else {
-		sumnreps <- Ngenes * nreps[1]
-		nreps <- rep(nreps[1], Ngenes)
-	}
-        
-        nFDRlist <- length(FDRlist)
-
-        ans <- .C("Simnu_mix",
-                  verb      = as.integer(verbose),
-                  fail      = as.integer(0),
-                  fncnt     = as.integer(0),
-                  grcnt     = as.integer(0),
-                  mask      = as.integer(0),
-                  usegr     = as.integer(gradient),
-                  pnsim     = as.integer(nsim),
-                  nu        = as.double(nu),
-                  Lbdinvhlf = as.double(Lbdinvhlf),
-                  pd        = as.integer(d),
-                  pnreps    = as.integer(nreps),
-                  pN        = as.integer(Ngenes),
-                  es        = as.double(effect.size),
-                  f1f2      = as.double(f1f2),
-                  coef      = as.double(rep(0,npar*nsim)),
-                  coefEV    = as.double(rep(0,2*nsim)),
-                  FDRlist   = as.double(FDRlist),
-                  pnFDRlist = as.integer(nFDRlist),
-                  fdrtbl    = as.double(rep(0,8*nFDRlist)),
-                  roctbl = as.double(rep(0,8*Ngenes)),
-                  PACKAGE   = "SharedHT2")
-        
-        coef <- t(matrix(ans$coef,npar,nsim))
-        dimnames(coef) <- list(1:nsim, "th" %,% (1:npar))
-
-        coefEV <- t(matrix(ans$coefEV,2,nsim))
-        dimnames(coefEV) <- list(1:nsim, c("s","r"))
-
-        fdrtbl <- matrix(ans$fdrtbl, nFDRlist, 8)/nsim
-        dimnames(fdrtbl) <- list(signif(FDRlist, 3),
-                              c(t(outer(c("ShHT2","HT2","ShUT2","UT2"),
-                                        c("-TPR","-FPR"), FUN="%,%"))))
-
-        roctbl <- matrix(ans$roctbl/nsim, Ngenes, 8)
-        dimnames(roctbl) <- list(rep("",Ngenes),
-                              c(t(outer(c("ShHT2","HT2","ShUT2","UT2"),
-                                        c("-TPR","-FPR"), FUN="%,%"))))
-
-	list(fdrtbl=fdrtbl, roctbl=roctbl, coef=coef,coefEV=coefEV, call = .call.)
-}
-
-"SimOneW.IW" <- 
-function(nu=NULL, Lambda=NULL, theta=NULL, nreps, Ngenes, effect.size)
+"SimMVN.IW" <- 
+function(nsim, shape=NULL, rate=NULL, theta=NULL, nreps, Ngenes, effect.size,
+         FDRlist = 0.05*(1:5), verbose=F, gradient=F)
 {
   .call. <- match.call()
-  is.nuL <- !(missing(nu)||missing(Lambda))
+  is.sr <- !(missing(shape)||missing(rate))
   is.theta <- !missing(theta)
-  if(!is.nuL&&!is.theta)
-    stop("Must provide _either_ (i) both 'nu' and 'Lambda' _or_ (ii) 'theta'")
+  if(!is.sr&&!is.theta) 
+     stop("Must provide _either_ (i) both 'shape' and 'rate' _or_ (ii)
+     'theta'")
+        if(length(effect.size)!=Ngenes)
+          stop("Argument 'effect.size' must be of length 'Ngenes'")
+        if(length(nreps)!=1&&length(nreps)!=Ngenes)
+          stop("Argument 'nreps' must be of length 1 or of length 'Ngenes'")
   if(is.theta) {
-    nuL <- shape.rate(theta)
-    nu <- nuL$shape
-    Lambda <- nuL$rate
+    sr <- shape.rate(theta)
+    shape <- sr$shape
+    rate <- sr$rate
   }
-  d.L <- dim(Lambda)
-  issym <- sum(abs(t(Lambda) - Lambda)==0)
-  if(d.L[1]!=d.L[2]||!issym) stop("'Lambda' must be a square symmetric matrix")
-  Lbdinvhlf <- chol(solve(Lambda))
-  d <- dim(Lambda)[1]
+  d.r <- dim(rate)
+  issym <- sum(abs(t(rate) - rate)==0)
+  if(d.r[1]!=d.r[2]||!issym) stop("'rate' must be a square symmetric matrix")
+  Lbdinvhlf <- chol(solve(rate))
+  d <- dim(rate)[1]
   d2 <- d^2
+  npar <- d*(d+1)/2 + 1
+  if(length(nreps) > 1) mxnreps <- max(nreps)
+  else {
+    mxnreps <- nreps
+    nreps <- rep(mxnreps, Ngenes)
+  }
 
-  ans <- .C("SimOneW_IW",
-          nu = as.double(nu),
-          Lbdinvhlf = as.double(Lbdinvhlf),
-          pd = as.integer(d),
-          pnreps = as.integer(nreps),
-          pN = as.integer(Ngenes),
-          es = as.double(effect.size),
-          YY = as.double(rep(0,Ngenes*nreps*d)),
-          PACKAGE="SharedHT2")
-  nms <- c(outer("log2.grp" %,% (1:d), ".rep" %,% (1:nreps), FUN="%,%"))
+  nFDRlist <- length(FDRlist)
+
+  ans <- .C("SimMVN_IW",
+            verb = as.integer(verbose),
+            fail = as.integer(0),
+            fncnt = as.integer(0),
+            grcnt = as.integer(0),
+            mask = as.integer(0),
+            usegr = as.integer(gradient),
+            pnsim = as.integer(nsim),
+            nu = as.double(shape),
+            Lbdinvhlf = as.double(Lbdinvhlf),
+            pd = as.integer(d),
+            pnreps = as.integer(nreps),
+            pN = as.integer(Ngenes),
+            es = as.double(effect.size),
+            coef = as.double(rep(0,npar*nsim)),
+            coefEV = as.double(rep(0,2*nsim)),
+            FDRlist = as.double(FDRlist),
+            pnFDRlist = as.integer(nFDRlist),
+            fdrtbl = as.double(rep(0,8*nFDRlist)),
+            roctbl = as.double(rep(0, 8*Ngenes)),
+            PACKAGE = "SharedHT2")
+
+  coef <- t(matrix(ans$coef,npar,nsim))
+  dimnames(coef) <- list(1:nsim, "th" %,% (1:npar))
+
+  coefEV <- t(matrix(ans$coefEV,2,nsim))
+  dimnames(coefEV) <- list(1:nsim, c("log(shape)","log(rate)"))
+
+  fdrtbl <- matrix(ans$fdrtbl, nFDRlist, 8)/nsim
+  dimnames(fdrtbl) <- list(signif(FDRlist, 3),
+                       c(t(outer(c("ShHT2","HT2","ShUT2","UT2"),
+                                 c("-TPR","-FPR"), FUN="%,%"))))
+  roctbl <- matrix(ans$roctbl/nsim, Ngenes, 8)
+  dimnames(roctbl) <- list(rep("",Ngenes),
+                       c(t(outer(c("ShHT2","HT2","ShUT2","UT2"),
+                                 c("-TPR","-FPR"), FUN="%,%"))))       
+        
+  list(fdrtbl=fdrtbl, roctbl=roctbl, coef=coef,coefEV=coefEV, call = .call.)
+}
+
+"SimMVN.mxIW" <- 
+function(nsim, shape=NULL, rate=NULL, theta=NULL, nreps, Ngenes, effect.size,
+         FDRlist = 0.05*(1:5), f1f2 = c(1/4, 1/2), verbose=F, gradient=F)
+{
+  .call. <- match.call()
+  is.sr <- !(missing(shape)||missing(rate))
+  is.theta <- !missing(theta)
+  if(!is.sr&&!is.theta) 
+     stop("Must provide _either_ (i) both 'shape' and 'rate' _or_ (ii) 'theta'")
+        if(f1f2[1]/f1f2[2] - 1 >=  -1e-10)
+           stop("Ratio f1/f2 must be less than 1.  Try something else !!!")
+        if(length(effect.size)!=Ngenes)
+          stop("Argument 'effect.size' must be of length 'Ngenes'")
+        if(length(nreps)!=1 && length(nreps)!=Ngenes)
+          stop("Argument 'nreps' must be of length 1 or of length 'Ngenes'")
+  if(is.theta) {
+    sr <- shape.rate(theta)
+    shape <- sr$shape
+    rate <- sr$rate
+  }
+  d.r <- dim(rate)
+  issym <- sum(abs(t(rate) - rate)==0)
+  if(d.r[1]!=d.r[2]||!issym) stop("'rate' must be a square symmetric matrix")
+  Lbdinvhlf <- chol(solve(rate))
+  d <- dim(rate)[1]
+  d2 <- d^2
+  npar <- d*(d+1)/2 + 1
+  if(length(nreps) > 1) mxnreps <- max(nreps)
+  else {
+    mxnreps <- nreps
+    nreps <- rep(mxnreps, Ngenes)
+  }
+
+  nFDRlist <- length(FDRlist)
+
+  ans <- .C("SimMVN_mxIW",
+            verb      = as.integer(verbose),
+            fail      = as.integer(0),
+            fncnt     = as.integer(0),
+            grcnt     = as.integer(0),
+            mask      = as.integer(0),
+            usegr     = as.integer(gradient),
+            pnsim     = as.integer(nsim),
+            nu        = as.double(shape),
+            Lbdinvhlf = as.double(Lbdinvhlf),
+            pd        = as.integer(d),
+            pnreps    = as.integer(nreps),
+            pN        = as.integer(Ngenes),
+            es        = as.double(effect.size),
+            f1f2      = as.double(f1f2),
+            coef      = as.double(rep(0,npar*nsim)),
+            coefEV    = as.double(rep(0,2*nsim)),
+            FDRlist   = as.double(FDRlist),
+            pnFDRlist = as.integer(nFDRlist),
+            fdrtbl    = as.double(rep(0,8*nFDRlist)),
+            roctbl = as.double(rep(0,8*Ngenes)),
+            PACKAGE   = "SharedHT2")
+        
+  coef <- t(matrix(ans$coef,npar,nsim))
+  dimnames(coef) <- list(1:nsim, "th" %,% (1:npar))
+
+  coefEV <- t(matrix(ans$coefEV,2,nsim))
+  dimnames(coefEV) <- list(1:nsim, c("log(shape)","log(rate)"))
+
+  fdrtbl <- matrix(ans$fdrtbl, nFDRlist, 8)/nsim
+  dimnames(fdrtbl) <- list(signif(FDRlist, 3),
+                       c(t(outer(c("ShHT2","HT2","ShUT2","UT2"),
+                                 c("-TPR","-FPR"), FUN="%,%"))))
+
+  roctbl <- matrix(ans$roctbl/nsim, Ngenes, 8)
+  dimnames(roctbl) <- list(rep("",Ngenes),
+                       c(t(outer(c("ShHT2","HT2","ShUT2","UT2"),
+                                 c("-TPR","-FPR"), FUN="%,%"))))
+
+  list(fdrtbl=fdrtbl, roctbl=roctbl, coef=coef,coefEV=coefEV, call = .call.)
+}
+
+"SimOneNorm.IG" <- 
+function(shape=NULL, rate=NULL, theta=NULL, ngroups, nreps, Ngenes, effect.size)
+{
+  .call. <- match.call()
+  is.sr <- !(missing(shape)||missing(rate))
+  is.theta <- !missing(theta)
+  if(!is.sr&&!is.theta)
+    stop("Must provide _either_ (i) both 'shape' and 'rate' _or_ (ii) 'theta'")
+  if(length(effect.size)!=Ngenes)
+    stop("Argument 'effect.size' must be of length 'Ngenes'")
+  if(length(nreps)!=1 && length(nreps) != Ngenes)
+    stop("Argument 'nreps' must be of length 1 or of length 'Ngenes'")
+  if(is.theta) {
+    shape <- exp(theta[1])
+    rate <- exp(theta[2])
+  }
+  d <- ngroups
+  if(length(nreps) > 1) mxnreps <- max(nreps)
+  else {
+    mxnreps <- nreps
+    nreps <- rep(mxnreps, Ngenes)
+  }
+
+  ans <- .C("SimOneNorm_IG",
+            shape = as.double(shape),
+            rate = as.double(rate),
+            pd = as.integer(d),
+            pnreps = as.integer(nreps),
+            pN = as.integer(Ngenes),
+            es = as.double(effect.size),
+            YY = as.double(rep(0,Ngenes*mxnreps*d)),
+            PACKAGE="SharedHT2")
+  nms <- c(outer("log2.grp" %,% (1:d), ".rep" %,% (1:mxnreps), FUN="%,%"))
   DAT <- data.frame(id=1:Ngenes)
-  DAT[,nms] <- t(matrix(ans$YY,nreps*d, Ngenes))
+  DAT[,nms] <- t(matrix(ans$YY,mxnreps*d, Ngenes))
   DAT
 }
 
-"SimOnenu.mix" <- 
-function(nu=NULL, Lambda=NULL, theta=NULL, f1f2=c(1/4, 1/2), nreps, 
+
+"SimOneMVN.IW" <- 
+function(shape=NULL, rate=NULL, theta=NULL, nreps, Ngenes, effect.size)
+{
+  .call. <- match.call()
+  is.sr <- !(missing(shape)||missing(rate))
+  is.theta <- !missing(theta)
+  if(!is.sr&&!is.theta)
+    stop("Must provide _either_ (i) both 'shape' and 'rate' _or_ (ii) 'theta'")
+  if(length(effect.size)!=Ngenes)
+    stop("Argument 'effect.size' must be of length 'Ngenes'")
+  if(length(nreps)!=1 && length(nreps) != Ngenes)
+    stop("Argument 'nreps' must be of length 1 or of length 'Ngenes'")
+  if(is.theta) {
+    sr <- shape.rate(theta)
+    shape <- sr$shape
+    rate <- sr$rate
+  }
+  d.r <- dim(rate)
+  issym <- sum(abs(t(rate) - rate)==0)
+  if(d.r[1]!=d.r[2]||!issym) stop("'rate' must be a square symmetric matrix")
+  Lbdinvhlf <- chol(solve(rate))
+  d <- dim(rate)[1]
+  d2 <- d^2
+
+  if(length(nreps) > 1) mxnreps <- max(nreps)
+  else {
+    mxnreps <- nreps
+    nreps <- rep(mxnreps, Ngenes)
+  }
+
+  ans <- .C("SimOneMVN_IW",
+            nu = as.double(shape),
+            Lbdinvhlf = as.double(Lbdinvhlf),
+            pd = as.integer(d),
+            pnreps = as.integer(nreps),
+            pN = as.integer(Ngenes),
+            es = as.double(effect.size),
+            YY = as.double(rep(0,Ngenes*mxnreps*d)),
+            PACKAGE="SharedHT2")
+  nms <- c(outer("log2.grp" %,% (1:d), ".rep" %,% (1:mxnreps), FUN="%,%"))
+  DAT <- data.frame(id=1:Ngenes)
+  DAT[,nms] <- t(matrix(ans$YY,mxnreps*d, Ngenes))
+  DAT
+}
+
+"SimOneMVN.mxIW" <- 
+function(shape=NULL, rate=NULL, theta=NULL, f1f2=c(1/4, 1/2), nreps, 
          Ngenes, effect.size)
 {
   .call. <- match.call()
-  is.nuL <- !(missing(nu)||missing(Lambda))
+  is.sr <- !(missing(shape)||missing(rate))
   is.theta <- !missing(theta)
-  if(!is.nuL&&!is.theta)
-    stop("Must provide _either_ (i) both 'nu' and 'Lambda' _or_ (ii) 'theta'")
+  if(!is.sr&&!is.theta)
+    stop("Must provide _either_ (i) both 'shape' and 'rate' _or_ (ii) 'theta'")
+  if(length(effect.size)!=Ngenes)
+    stop("Argument 'effect.size' must be of length 'Ngenes'")
+  if(length(nreps)!=1 && length(nreps) != Ngenes)
+    stop("Argument 'nreps' must be of length 1 or of length 'Ngenes'")
   if(is.theta) {
-    nuL <- shape.rate(theta)
-    nu <- nuL$shape
-    Lambda <- nuL$rate
+    sr <- shape.rate(theta)
+    shape <- nuL$shape
+    rate <- nuL$rate
   }
-  d.L <- dim(Lambda)
-  issym <- sum(abs(t(Lambda) - Lambda)==0)
-  if(d.L[1]!=d.L[2]||!issym) stop("'Lambda' must be a square symmetric matrix")
-  Lbdinvhlf <- chol(solve(Lambda))
-  d <- dim(Lambda)[1]
+  d.r <- dim(rate)
+  issym <- sum(abs(t(rate) - rate)==0)
+  if(d.r[1]!=d.r[2]||!issym) stop("'rate' must be a square symmetric matrix")
+  Lbdinvhlf <- chol(solve(rate))
+  d <- dim(rate)[1]
   d2 <- d^2
 
-  ans <- .C("SimOnenu_mix",
-          nu = as.double(nu),
-          Lbdinvhlf = as.double(Lbdinvhlf),
-          f1f2 = as.double(f1f2),
-          pd = as.integer(d),
-          pnreps = as.integer(nreps),
-          pN = as.integer(Ngenes),
-          es = as.double(effect.size),
-          YY = as.double(rep(0,Ngenes*nreps*d)),
-          PACKAGE="SharedHT2")
-  nms <- c(outer("log2.grp" %,% (1:d), ".rep" %,% (1:nreps), FUN="%,%"))
+  if(length(nreps) > 1) mxnreps <- max(nreps)
+  else {
+    mxnreps <- nreps
+    nreps <- rep(mxnreps, Ngenes)
+  }
+
+  ans <- .C("SimOneMVN_mxIW",
+            nu = as.double(shape),
+            Lbdinvhlf = as.double(Lbdinvhlf),
+            f1f2 = as.double(f1f2),
+            pd = as.integer(d),
+            pnreps = as.integer(nreps),
+            pN = as.integer(Ngenes),
+            es = as.double(effect.size),
+            YY = as.double(rep(0,Ngenes*mxnreps*d)),
+            PACKAGE="SharedHT2")
+  nms <- c(outer("log2.grp" %,% (1:d), ".rep" %,% (1:mxnreps), FUN="%,%"))
   DAT <- data.frame(id=1:Ngenes)
-  DAT[,nms] <- t(matrix(ans$YY,nreps*d, Ngenes))
+  DAT[,nms] <- t(matrix(ans$YY,mxnreps*d, Ngenes))
   DAT
 }
 
@@ -990,39 +1357,39 @@ function(e.I, e.II, nreps, d)
 "trgamma" <- 
 function(n, shape, scale)
 {
-	ans <- .C("rgammans",
-	pn = as.integer(n),
-	shape = as.double(shape),
-	scale = as.double(scale),
-	ans = as.double(rep(0,n)),
+  ans <- .C("rgammans",
+  pn = as.integer(n),
+  shape = as.double(shape),
+  scale = as.double(scale),
+  ans = as.double(rep(0,n)),
         PACKAGE="SharedHT2")
-	ans$ans
+  ans$ans
 }
 
 "trnorm" <- 
 function(n)
 {
-	ans <- .C("rnormns",
-	pn = as.integer(n),
-	ans = as.double(rep(0,n)),
+  ans <- .C("rnormns",
+  pn = as.integer(n),
+  ans = as.double(rep(0,n)),
         PACKAGE="SharedHT2")
-	ans$ans
+  ans$ans
 }
 
 "rwishart" <- 
 function(n, df, Lambda)
 {
-	Lambdahlf <- chol(Lambda)
-	d <- dim(Lambdahlf)[1]
-	ans <- .C("rwishartns",
-	pn = as.integer(n),
-	pdf = as.double(df),
-	pd = as.integer(d),
-	pSqrtSigma = as.double(Lambdahlf),
-	prows = as.integer(1),
-	pW = as.double(rep(0, n*d^2)),
-	PACKAGE="SharedHT2")
-	matrix(ans$pW, n, d^2)
+  Lambdahlf <- chol(Lambda)
+  d <- dim(Lambdahlf)[1]
+  ans <- .C("rwishartns",
+  pn = as.integer(n),
+  pdf = as.double(df),
+  pd = as.integer(d),
+  pSqrtSigma = as.double(Lambdahlf),
+  prows = as.integer(1),
+  pW = as.double(rep(0, n*d^2)),
+  PACKAGE="SharedHT2")
+  matrix(ans$pW, n, d^2)
 }
 
 "%,%" <- 
@@ -1031,45 +1398,44 @@ function (x, y)paste(x, y, sep = "")
 "if.bad.0" <- 
 function (x)
 {
-    ans <- x
-    if (is.vector(x)) {
-        ans[is.na(x) | (abs(x) == Inf)] <- 0
-    }
-    if (is.array(x)) {
-        ans <- c(ans)
-        ans[is.na(x) | (abs(x) == Inf)] <- 0
-        ans <- array(ans, dim(x))
-    }
-    ans
+  ans <- x
+  if (is.vector(x)) {
+      ans[is.na(x) | (abs(x) == Inf)] <- 0
+  }
+  if (is.array(x)) {
+    ans <- c(ans)
+    ans[is.na(x) | (abs(x) == Inf)] <- 0
+    ans <- array(ans, dim(x))
+  }
+  ans
 }
 
 "%K%" <-
 function (x, y)
 {
-    kronecker(x, y)
+  kronecker(x, y)
 }
 
 "make.form" <- 
 function (y, x)
 {
-    string <- paste(y, " ~ ", sep = "")
-    p <- length(x)
-    string <- paste(string, x[1], sep = "")
-    if (p > 1)
-        for (k in 2:p) string <- paste(string, paste(" + ", x[k],
-            sep = ""), sep = "")
-    form <- formula(string)
-    form
+  string <- paste(y, " ~ ", sep = "")
+  p <- length(x)
+  string <- paste(string, x[1], sep = "")
+  if (p > 1)
+    for (k in 2:p) string <- paste(string, paste(" + ", x[k], sep = ""), sep = "")
+  form <- formula(string)
+  form
 }
 
 ShHT2News <- function() {
-    newsfile <- file.path(system.file(package="SharedHT2"), "NEWS")
-    file.show(newsfile)
+  newsfile <- file.path(system.file(package="SharedHT2"), "NEWS")
+  file.show(newsfile)
 }
 
 .onAttach <- function(libname, pkgname) {
-    ShHT2ver <- read.dcf(file=system.file("DESCRIPTION", package=pkgname),
-                      fields="Version")
-    cat(paste(pkgname, ShHT2ver, "\n"))
-    cat("Type ShHT2News() to see new features/changes/bug fixes.\n")
+  ShHT2ver <- read.dcf(file=system.file("DESCRIPTION", package=pkgname),
+                       fields="Version")
+  cat(paste(pkgname, ShHT2ver, "\n"))
+  cat("Type ShHT2News() to see new features/changes/bug fixes.\n")
 }

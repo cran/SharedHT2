@@ -5,24 +5,23 @@ void rwishart1(double *pdf, long *pd, double *pSqrtSigma, double *pW);
 void matinv(double *a, double *yvv, long *pm);
 void rnormn(long *pn, double *ans);
 
-void SimOnenu_mix(double *nu, double *Lbdinvhlf, double *f1f2, long *pd, 
-                  long *pnreps, long *pN, double *es, double *YY)
+void SimOneMVN_mxIW(double *nu, double *Lbdinvhlf, double *f1f2, long *pd, 
+                    long *pnreps, long *pN, double *es, double *YY)
 {
-  long i, j, k, l, d, npar, npar2, d2, d4, N, nreps, Jrand;
+  long i, j, k, l, d, d2, N, nreps, mxnreps, Jrand;
   long *lbuff;
 
-  double xnreps, xd, sm, tstnu, nu_1, nu_2, zz, lambda, f_1, f_2;
+  double xd, sm, tstnu, nu_1, nu_2, zz, lambda, f_1, f_2;
 
   double *df, *pW, *SgmHlf, *Y, *xbuff, *Sigma, *sig, *SigInv;
 
   N = *pN;
-  nreps = *pnreps;
   d = *pd;
   xd = (double) d;
   d2 = d*d;
-  d4 = d2*d2;
-  npar = d*(d+1)/2 + 1;
-  npar2 = npar*npar;
+
+  mxnreps=0;
+  for(l=0;l<N;l++) if(mxnreps < *(pnreps+l)) mxnreps = *(pnreps+l);
 
   lbuff         = (long   *)S_alloc(        1,sizeof(long));
 
@@ -30,7 +29,7 @@ void SimOnenu_mix(double *nu, double *Lbdinvhlf, double *f1f2, long *pd,
   pW            = (double *)S_alloc(       d2, sizeof(double));
   xbuff         = (double *)S_alloc(        d, sizeof(double));
   SgmHlf        = (double *)S_alloc(       d2, sizeof(double));
-  Y             = (double *)S_alloc(  nreps*d, sizeof(double));
+  Y             = (double *)S_alloc(mxnreps*d, sizeof(double));
   Sigma         = (double *)S_alloc(       d2, sizeof(double));
   SigInv        = (double *)S_alloc(       d2, sizeof(double));
   sig           = (double *)S_alloc(        d, sizeof(double));
@@ -87,7 +86,7 @@ void SimOnenu_mix(double *nu, double *Lbdinvhlf, double *f1f2, long *pd,
     /* Sigma ~ (1-f_1)*InvWish_d(nu_1, Lambda) + f_1*InvWish_d(nu_2, Lambda)            */
     /*                                                                                  */
     /* Next, use Sigma to simulate i.i.d. N(0_d, Sigma)'s                               */
-    xnreps = (double) nreps;
+    nreps = *(pnreps + l);
     *lbuff = nreps*d;
     rnormn(lbuff, Y); 
     chol(Sigma, SgmHlf, pd);
@@ -100,7 +99,7 @@ void SimOnenu_mix(double *nu, double *Lbdinvhlf, double *f1f2, long *pd,
       }
       for(j=0;j<d;j++) *(Y + d*i + j) = *(xbuff + j) + *(es + l)*(*(sig + j));
     }
-    for(i=0;i<(nreps*d);i++) *(YY + nreps*d*l + i) = *(Y+i);
+    for(i=0;i<(nreps*d);i++) *(YY + mxnreps*d*l + i) = *(Y+i);
   }
   PutRNGstate();
 }

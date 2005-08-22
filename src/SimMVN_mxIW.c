@@ -1,4 +1,4 @@
-/* Simnu_mix, an attempt to explore the robustness of the ShHT2                        */
+/* SimMVN_mxIW, an attempt to explore the robustness of the ShHT2                        */
 /* statistic to model assumptions. It is (luckily) a minor modification of             */
 /* SimW_IW.                                                                            */
 /*                                                                                     */
@@ -13,7 +13,7 @@
 /* the corresponding row a mean value as to reject the simple 'UT2' f-test             */
 /* at alternative given by ncp = es                                                    */
 /*                                                                                     */
-/* Simnu_mix simulates data under the following model, (2), which is designed          */
+/* SimMVN_mxIW simulates data under the following model, (2), which is designed          */
 /* to have mean zero and va-/cova-riance matrix identical to that of the               */
 /* original model (1) in order that a given effect size may be directly                */
 /* compared in the two models.  This is done as follows                                */
@@ -112,17 +112,17 @@ void rnormn(long *pn, double *ans);
 
 void printmat(double *pA, long nr, long nc, char *name);
 
-void FitInvWish1(double *ptheta0, long *pverbose, Data *y, double *objval,
+void Fit_MVF1(double *ptheta0, long *pverbose, Data *y, double *objval,
                  double *estimate, long *fail, long *fncnt, long *grcnt, 
                  long *mask, long *usegr, double *G, double *H);
 
-void FitEqualVar1(double *ptheta0, long *pverbose, DataEV *y, double *objval, 
+void Fit_F1(double *ptheta0, long *pverbose, DataEV *y, double *objval, 
                   double *estimate, long *fail, long *fncnt, long *grcnt, 
                   long *mask, long *usegr, double *G, double *H);
 
 void printglist(gene *x, long N, char *strng);
 
-void Simnu_mix(long *verb, long *fail, long *fncnt, long *grcnt, long *mask, 
+void SimMVN_mxIW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask, 
                long *usegr, long *pnsim, double *nu, double *Lbdinvhlf, long *pd, 
                long *pnreps, long *pN, double *es, double *f1f2, double *coef, 
                double *coefEV, double *FDRlist, long *pnFDRlist, 
@@ -143,7 +143,7 @@ void Simnu_mix(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
   Data *y;
   DataEV *yEV;
   gene *genelist;
-  FILE *itfnm_ptr, *dtfl_ptr;
+  FILE *itfnm_ptr;
   char *ch;
   char *alnu;
 
@@ -161,35 +161,35 @@ void Simnu_mix(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
   mxnreps=0;
   for(l=0;l<N;l++) if(mxnreps < *(pnreps+l)) mxnreps = *(pnreps+l);
 
-  lbuff         = (long   *)S_alloc(        1,sizeof(long));
-  pnpar         = (long   *)S_alloc(        1,   sizeof(long));
+  lbuff       = (long   *)S_alloc(        1, sizeof(long));
+  pnpar       = (long   *)S_alloc(        1, sizeof(long));
 
-  df            = (double *)S_alloc(        1, sizeof(double));
-  pW            = (double *)S_alloc(       d2, sizeof(double));
-  xbuff         = (double *)S_alloc(        d, sizeof(double));
-  SgmHlf        = (double *)S_alloc(       d2, sizeof(double));
-  muhat         = (double *)S_alloc(      N*d, sizeof(double));
-  res           = (double *)S_alloc(       d2, sizeof(double));
-  Sighat        = (double *)S_alloc(     N*d2, sizeof(double));
-  WSSQ          = (double *)S_alloc(        N, sizeof(double));
-  ptheta0       = (double *)S_alloc(     npar, sizeof(double));
-  objv          = (double *)S_alloc(        1, sizeof(double));
-  estimate      = (double *)S_alloc(     npar, sizeof(double));
-  G             = (double *)S_alloc(     npar, sizeof(double));
-  H             = (double *)S_alloc(    npar2, sizeof(double));
-  Y             = (double *)S_alloc(mxnreps*d, sizeof(double));
-  Sigma         = (double *)S_alloc(       d2, sizeof(double));
-  SigInv        = (double *)S_alloc(       d2, sizeof(double));
-  Lambda_isim   = (double *)S_alloc(       d2, sizeof(double));
-  LbdHlf        = (double *)S_alloc(       d2, sizeof(double));
-  sig           = (double *)S_alloc(        d, sizeof(double));
-  rFDR          = (double *)S_alloc(        N, sizeof(double));
-  itfnm         = (char   *)S_alloc(      100, sizeof(char));
-  alnu          = (char   *)S_alloc(       62, sizeof(char));
-  ch            = (char   *)S_alloc(        2, sizeof(char));
-  y             = (Data   *)S_alloc(        1, sizeof(Data));
-  yEV           = (DataEV *)S_alloc(        1, sizeof(DataEV));
-  genelist      = (gene   *)S_alloc(        N, sizeof(gene));
+  df          = (double *)S_alloc(        1, sizeof(double));
+  pW          = (double *)S_alloc(       d2, sizeof(double));
+  xbuff       = (double *)S_alloc(        d, sizeof(double));
+  SgmHlf      = (double *)S_alloc(       d2, sizeof(double));
+  muhat       = (double *)S_alloc(      N*d, sizeof(double));
+  res         = (double *)S_alloc(mxnreps*d, sizeof(double));
+  Sighat      = (double *)S_alloc(     N*d2, sizeof(double));
+  WSSQ        = (double *)S_alloc(        N, sizeof(double));
+  ptheta0     = (double *)S_alloc(     npar, sizeof(double));
+  objv        = (double *)S_alloc(        1, sizeof(double));
+  estimate    = (double *)S_alloc(     npar, sizeof(double));
+  G           = (double *)S_alloc(     npar, sizeof(double));
+  H           = (double *)S_alloc(    npar2, sizeof(double));
+  Y           = (double *)S_alloc(mxnreps*d, sizeof(double));
+  Sigma       = (double *)S_alloc(       d2, sizeof(double));
+  SigInv      = (double *)S_alloc(       d2, sizeof(double));
+  Lambda_isim = (double *)S_alloc(       d2, sizeof(double));
+  LbdHlf      = (double *)S_alloc(       d2, sizeof(double));
+  sig         = (double *)S_alloc(        d, sizeof(double));
+  rFDR        = (double *)S_alloc(        N, sizeof(double));
+  itfnm       = (char   *)S_alloc(      100, sizeof(char));
+  alnu        = (char   *)S_alloc(       62, sizeof(char));
+  ch          = (char   *)S_alloc(        2, sizeof(char));
+  y           = (Data   *)S_alloc(        1, sizeof(Data));
+  yEV         = (DataEV *)S_alloc(        1, sizeof(DataEV));
+  genelist    = (gene   *)S_alloc(        N, sizeof(gene));
 
   alnu = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   *(ch+1) = '\0';
@@ -247,13 +247,6 @@ void Simnu_mix(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
   /*start of simulation loop: (no simulation loop just yet...just try one rep first   */
   for(isim=0;isim<nsim;isim++){
 
-    if(isim>0){
-      system("rm DATFILE");
-    }
-    dtfl_ptr = fopen("DATFILE", "w+");
-
-    rewind(itfnm_ptr);
-
     for(l=0;l<N;l++){  
 
       /* Pick J = 1 w.p. 1-f_1, J= 2 w.p. f_1.                                            */
@@ -294,9 +287,6 @@ void Simnu_mix(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
 	for(j=0;j<d;j++) *(Y + d*i + j) = *(xbuff + j) + *(es + l)*(*(sig + j));
       }
 
-      for(j=0;j<nreps*d;j++) fprintf(dtfl_ptr, "%g ", *(Y+j));
-      fprintf(dtfl_ptr, "\n");
-
       /* compute per gene sample mean and residuals   */
       for(j=0;j<d;j++){
 	sm = 0.0;
@@ -318,8 +308,6 @@ void Simnu_mix(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
       *(WSSQ + l) = smEV;
     }
 
-    fclose(dtfl_ptr);
-
     /* Fit the model for the marginal distribution of Sighat under the Wishart/Inverse Wishart */
     y->MVM = Sighat;
     y->pN = pN;
@@ -327,7 +315,7 @@ void Simnu_mix(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
     y->nreps = pnreps;
 
     for(l=0;l<npar;l++) *(ptheta0 + l) = 0.0;
-    FitInvWish1(ptheta0, verb, y, objv, estimate, fail, fncnt, grcnt, mask, usegr, G, H);
+    Fit_MVF1(ptheta0, verb, y, objv, estimate, fail, fncnt, grcnt, mask, usegr, G, H);
 
     /* Store the coefficient estimates for all simulation rounds:                              */
     for(l=0;l<npar;l++) *(coef + npar*isim + l) = *(estimate + l);
@@ -359,7 +347,7 @@ void Simnu_mix(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
     yEV->nreps = pnreps;
 
     for(l=0;l<2;l++) *(ptheta0 + l) = 0.0;
-    FitEqualVar1(ptheta0, verb, yEV, objv, estimate, fail, fncnt, grcnt, mask, usegr, G, H); 
+    Fit_F1(ptheta0, verb, yEV, objv, estimate, fail, fncnt, grcnt, mask, usegr, G, H); 
 
     /* Store the coefficient estimates for all simulation rounds:                                 */
     for(l=0;l<2;l++) *(coefEV + 2*isim + l) = *(estimate + l);
@@ -406,22 +394,22 @@ void Simnu_mix(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
       }
       sm=0.0;
       for(k=0;k<d;k++) sm += *(xbuff + k) * (*(muhat + d*l + k));
-      xn2 = xnreps - xd + 1.0;
+      xn2 = xnreps - xd;
       stat2 = xnreps * sm * xn2/xd;
       pval2 = pf(stat2, xd, xn2, 0, 0);
 
       /*shared variance univariate T2 */
       sm = 0.0;
       for(k=0;k<d;k++) sm+= (*(muhat + d*l + k))*(*(muhat + d*l + k));
-      Top = (xnreps*xd-1.0)*(*(WSSQ+l)) + xnreps*sm;
-      stat3 = Top/(2.0*r + (xnreps*xd-1.0)*(*(WSSQ+l)));
-      stat3 = (2.0*s+xd*(xnreps-1.0))/(xnreps*xd)*stat3;
-      pval3 = pf(stat3, xnreps*xd, 2.0*s + xd*(xnreps-1.0), 0, 0);
+      Top = xnreps*xnreps*sm;
+      stat3 = Top/(2.0*r + *(WSSQ+l));
+      stat3 = (2.0*s + xnreps - xd)/xd * stat3;
+      pval3 = pf(stat3, xd, 2.0*s + xd*(xnreps-1.0), 0, 0);
 
       /*ordinary univariate T2 */
       stat4 = Top/(*(WSSQ+l));
-      stat4 = (xd*(xnreps-1.0))/(xnreps*xd)*stat4;
-      pval4 = pf(stat4, xnreps*xd, xd*(xnreps-1.0), 0, 0);
+      stat4 = (xnreps - xd)/xd * stat4;
+      pval4 = pf(stat4, xd, xd*(xnreps-1.0), 0, 0);
 
       (genelist + l)->id = l;
       (genelist + l)->mean = vamx*sgn;
@@ -563,7 +551,8 @@ void Simnu_mix(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
     fprintf(itfnm_ptr, "isim=%d, nu=%g, L=",isim, nu_isim);
     for(i=0;i<d2;i++) fprintf(itfnm_ptr, "%g, ",*(Lambda_isim+i));
     fprintf(itfnm_ptr,"s=%g, r=%g\n",s,r);
+    rewind(itfnm_ptr);
   }
-  fclose(itfnm_ptr);
   PutRNGstate();
+  fclose(itfnm_ptr);
 }

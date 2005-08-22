@@ -1,30 +1,28 @@
-\name{Simnu.mix}
-\alias{Simnu.mix}
-\title{Simulation study using the Wishart/MIXED Inverse Wishart Model}
+\name{SimMVN.IW}
+\alias{SimMVN.IW}
+\title{Simulation study using the Multivariate Normal/Inverse Wishart Model}
 \description{
-  See the SimW.IW documentation (type ?SimW.IW).  \code{Simmix.nu} generates 
-  \code{nsim} simulation replicates of a simulated micro-array expression 
-  experiment but this time under a Wishart/mixed Inverse Wishart model for 
-  the purposes of benchmarking the four previously (in ?SimW.IW) mentioned 
-  statistics when the data doesn't obey the Wishart/Inverse Wishart model 
-  assumptions. Specifically, the mixed Inverse Wishart is chosen so that
-  the average group variances under this model are the same as they would
-  be under the Wishart/Inverse Wishart model with the same parameters.}
+  \code{SimMVN.IW} generates \code{nsim} simulation replicates of a 
+  simulated micro-array expression experiment under the Multivariate Normal/
+  Inverse Wishart model for the purposes of benchmarking the empirical Bayes 
+  Hotelling T-squared test against three other statistics, the standard
+  Hotelling T-squared test, the empirical Bayes univariate F test and the
+  standard univariate F test.}
 }
 \usage{
-Simnu.mix(nsim, nu = NULL, Lambda = NULL, theta = NULL, nreps, 
-          Ngenes, effect.size, FDRlist = 0.05 * (1:5), 
-          f1f2 = c(1/4, 1/2), verbose = F, gradient = F) 
+SimMVN.IW(nsim, shape = NULL, rate = NULL, theta = NULL, nreps, 
+          Ngenes, effect.size, FDRlist = 0.05 * (1:5), verbose = F, 
+          gradient = F) 
 }
+
 \arguments{
   \item{nsim}{Number of simulations desired.}
-  \item{nu}{The shape parameter for the Inverse Wishart distribution with equal
-    averaged-over-genes group variance.}
-  \item{Lambda}{The rate parameter matrix, of dimension \code{d} by \code{d}
+  \item{shape}{The shape parameter for the Inverse Wishart distribution}
+  \item{rate}{The rate parameter matrix, of dimension \code{d} by \code{d}
     where \code{d} is the number of experimental groups.}
-  \item{theta}{Alternatively to specifying \code{nu} and \code{Lambda}
+  \item{theta}{Alternatively to specifying \code{shape} and \code{rate}
     above, the user can directly specify the model parameters from which
-    \code{nu} and \code{Lambda} are computed.  Type ?EBfit for more details.}
+    \code{shape} and \code{rate} are computed.  Type ?EBfit for more details.}
   \item{nreps}{Number of replicates per group.}
   \item{Ngenes}{Number of rows (or genes) in the dataset (micro-array experiment)}
   \item{effect.size}{A vector of length \code{Ngenes} giving the effect size. 
@@ -35,18 +33,12 @@ Simnu.mix(nsim, nu = NULL, Lambda = NULL, theta = NULL, nreps,
     ?find.ncp.}
   \item{FDRlist}{A list of FDR values to use in the BH step down procedure
     used in summarizing the simulation results.}
-  \item{f1f2}{A vector of length 2 containing strictly increasing values between 
-    0 and 1.  These are additional parameters specifying the mixing proportion for
-    the discrete two component mixture and the proportion of the fractional part
-    of \code{nu/(2*d+2)} specifying the amount by which one of the two shape
-    parameters should exceed 1.  The other shape parameter is derived so that
-    the averaged-over-genes group variances are equal to their values under the
-    corresponding Wishart/Inverse Wishart model.}
   \item{verbose}{Doesn't really belong here. Defaults to FALSE, leave it that
     way or your log file will grow to large}
   \item{gradient}{Also doesn't belong here. Defaults to FALSE, leave it that 
     way.}
 }
+
 \value{
   A list containing the following 5 components:
   \item{fdrtbl}{A matrix of dimension \code{length(FDRlist)} by 8, with one row
@@ -62,21 +54,25 @@ Simnu.mix(nsim, nu = NULL, Lambda = NULL, theta = NULL, nreps,
     values are averaged over the \code{nsim} simulation reps producing an \code{Ngenes} 
     by 8 matrix.}
   \item{coef}{An \code{nsim} by \code{d*(d+1)/2 + 1} matrix containing the fitted
-    model coefficients for the Wishart/Inverse Wishart model.}
+    model coefficients for the Multivariate Normal/Inverse Wishart model.}
   \item{coefEV}{An \code{nsim} by 2 matrix containing the fitted model coefficients
-    for the Chi-squared/Inverse Gamma model.}
-  \item{call}{The original call to \code{Simnu.mix}}
+    for the Normal/Inverse Gamma model.}
+  \item{call}{The original call to \code{SimMVN.IW}}
 }
 
 \author{Grant Izmirlian \email{izmirlian@nih.gov}}
 
 \seealso{\code{\link{EB.Anova}}, \code{\link{EBfit}}, \code{\link{SimAffyDat}},
-         \code{\link{TopGenes}}, \code{\link{Simnu.mix}}
+         \code{\link{TopGenes}}, \code{\link{SimNorm.IG}}, \code{\link{SimMVN.mxIW}}, 
+         \code{\link{SimOneNorm.IG}}, \code{\link{SimOneMVN.IW}},
+         \code{\link{SimOneMVN.mxIW}}
 }
 
 \examples{\dontrun{
-  Simnu.mix(nsim=500, theta=EBfit(fit.SimAffyDat)$coef, Ngenes=12625,
-          nreps=3, FDRlist = 0.05*(1:5))
+  SimResults <- 
+    SimMVN.IW(nsim=500, theta=EBfit(fit.SimAffyDat)$coef, Ngenes=12625,
+              nreps=3, FDRlist = 0.05*(1:5), effect.size = c(rep(7.5/3^{0.5}, 100), 
+              rep(0, 100 - 100))
           
 # Or create a batch file like this
 # contents of mysim.R:
@@ -87,7 +83,8 @@ Simnu.mix(nsim, nu = NULL, Lambda = NULL, theta = NULL, nreps,
   nTP <- 100
   effect.size <- c(rep(7.5/3^{0.5}, nTP), rep(0, Ngenes - nTP)
   theta <- EBfit(fit.SimAffyDat)$coef
-  SimResults <- Simnu.mix(nsim=nsim, theta = theta, nreps = nreps, 
+
+  SimResults <- SimMVN.IW(nsim=nsim, theta = theta, nreps = nreps, 
                           Ngenes = Ngenes, effect.size = effect.size)
 
 # At the command prompt

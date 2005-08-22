@@ -1,28 +1,28 @@
-\name{SimW.IW}
-\alias{SimW.IW}
-\title{Simulation study using the Wishart/Inverse Wishart Model}
+\name{SimNorm.IG}
+\alias{SimNorm.IG}
+\title{Simulation study using the Normal/Inverse Gamma Model}
 \description{
-  \code{SimW.IW} generates \code{nsim} simulation replicates of a 
-  simulated micro-array expression experiment under the Wishart/Inverse 
-  Wishart model for the purposes of benchmarking the empirical Bayes 
+  \code{SimNorm.IG} generates \code{nsim} simulation replicates of a 
+  simulated micro-array expression experiment under the Normal/Inverse 
+  Gamma model for the purposes of benchmarking the empirical Bayes 
   Hotelling T-squared test against three other statistics, the standard
   Hotelling T-squared test, the empirical Bayes univariate F test and the
   standard univariate F test.}
 }
 \usage{
-SimW.IW(nsim, nu = NULL, Lambda = NULL, theta = NULL, nreps, 
-        Ngenes, effect.size, FDRlist = 0.05 * (1:5), verbose = F, 
-        gradient = F) 
+SimNorm.IG(nsim, shape = NULL, rate = NULL, theta = NULL, ngroups, nreps, 
+           Ngenes, effect.size, FDRlist = 0.05 * (1:5), verbose = F, 
+           gradient = F) 
 }
 
 \arguments{
   \item{nsim}{Number of simulations desired.}
-  \item{nu}{The shape parameter for the Inverse Wishart distribution}
-  \item{Lambda}{The rate parameter matrix, of dimension \code{d} by \code{d}
-    where \code{d} is the number of experimental groups.}
-  \item{theta}{Alternatively to specifying \code{nu} and \code{Lambda}
-    above, the user can directly specify the model parameters from which
-    \code{nu} and \code{Lambda} are computed.  Type ?EBfit for more details.}
+  \item{shape}{The shape parameter for the Inverse Gamma distribution}
+  \item{rate}{The rate parameter for the Inverse Gamma distribution}
+  \item{theta}{Alternatively to specifying \code{shape} and \code{rate}
+    above, the user can directly specify the model parameters i.e. the
+    logged shape and logged rate.}
+  \item{ngroups}{The number or experimental groups.}
   \item{nreps}{Number of replicates per group.}
   \item{Ngenes}{Number of rows (or genes) in the dataset (micro-array experiment)}
   \item{effect.size}{A vector of length \code{Ngenes} giving the effect size. 
@@ -54,33 +54,45 @@ SimW.IW(nsim, nu = NULL, Lambda = NULL, theta = NULL, nreps,
     values are averaged over the \code{nsim} simulation reps producing an \code{Ngenes} 
     by 8 matrix.}
   \item{coef}{An \code{nsim} by \code{d*(d+1)/2 + 1} matrix containing the fitted
-    model coefficients for the Wishart/Inverse Wishart model.}
+    model coefficients for the Multivariate Normal/Inverse Wishart model.}
   \item{coefEV}{An \code{nsim} by 2 matrix containing the fitted model coefficients
-    for the Chi-squared/Inverse Gamma model.}
-  \item{call}{The original call to \code{SimW.IW}}
+    for the Normal/Inverse Gamma model.}
+  \item{call}{The original call to \code{SimNorm.IG}}
 }
 
 \author{Grant Izmirlian \email{izmirlian@nih.gov}}
 
 \seealso{\code{\link{EB.Anova}}, \code{\link{EBfit}}, \code{\link{SimAffyDat}},
-         \code{\link{TopGenes}}, \code{\link{Simnu.mix}}
+         \code{\link{TopGenes}}, \code{\link{SimMVN.IW}}, 
+         \code{\link{SimMVN.mxIW}}, \code{\link{SimOneNorm.IG}}, 
+         \code{\link{SimOneMVN.IW}}, \code{\link{SimOneMVN.mxIW}}
 }
 
-\examples{\dontrun{
-  SimW.IW(nsim=500, theta=EBfit(fit.SimAffyDat)$coef, Ngenes=12625,
-          nreps=3, FDRlist = 0.05*(1:5))
+\examples{
+  SimResults <-
+    SimNorm.IG(nsim=10, theta=c(0.6605673, -3.2137414), Ngenes=12625,
+               ngroups=2, nreps=3, FDRlist = 0.05*(1:5), effect.size =
+               c(rep(7.5/3^{0.5}, 100), rep(0, 12625 - 100)))
+
+\dontrun{
+  SimResults <- 
+    SimNorm.IG(nsim=500, theta=c(0.6605673, -3.2137414), Ngenes=12625,
+               ngroups=2, nreps=3, FDRlist = 0.05*(1:5), effect.size = 
+               c(rep(7.5/3^{0.5}, 100), rep(0, 12625 - 100))
           
 # Or create a batch file like this
 # contents of mysim.R:
   library(SharedHT2)
   nsim <- 500
+  ngroups <- 2
   nreps <- 3
   Ngenes <- 12625
   nTP <- 100
   effect.size <- c(rep(7.5/3^{0.5}, nTP), rep(0, Ngenes - nTP)
-  theta <- EBfit(fit.SimAffyDat)$coef
-  SimResults <- SimW.IW(nsim=nsim, theta = theta, nreps = nreps, 
-          Ngenes = Ngenes, effect.size = effect.size)
+  theta <- c(0.6605673, -3.2137414)
+
+  SimResults <- SimNorm.IG(nsim=nsim, theta = theta, ngroups=ngroups, 
+                        nreps = nreps, Ngenes = Ngenes, effect.size = effect.size)
 
 # At the command prompt
 

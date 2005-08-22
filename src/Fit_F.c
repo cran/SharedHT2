@@ -27,7 +27,7 @@ void fHESSEV(double *x, DataEV *y, double *G, double *H, optimgr *grad);
 optimfn loglikEV;
 optimgr GloglikEV, *gradEV;
 
-void FitEqualVar(double *ptheta0, double *S, long *pN, long *pd, long *pnreps,
+void Fit_F(double *ptheta0, double *S, long *pN, long *pd, long *pnreps,
                  long *pverbose, double *objval, double *estimate, long *fail,
                  long *fncount, long *grcount, long *mask, long *usegr,
                  double *G, double *H)
