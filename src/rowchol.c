@@ -1,9 +1,9 @@
-void chol(double *s, double *t, long *pd);
+void chol(double *s, double *t, int *pd);
 
-void rowchol(double *x, double *z, long *pn, long *pnx)
+void rowchol(double *x, double *z, int *pn, int *pnx)
 {
 
-        long n, nx, l;
+        int n, nx, l;
 
         n = *pn;
         nx = *pnx;

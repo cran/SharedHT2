@@ -1,15 +1,17 @@
 #include<R.h>
 #include<Rmath.h>
 
-void rwishart1(double *pdf, long *pd, double *pSqrtSigma, double *pW);
-void matinv(double *a, double *yvv, long *pm);
-void rnormn(long *pn, double *ans);
+void chol(double *s, double *t, int *pd);
 
-void SimOneMVN_mxIW(double *nu, double *Lbdinvhlf, double *f1f2, long *pd, 
-                    long *pnreps, long *pN, double *es, double *YY)
+void rwishart1(double *pdf, int *pd, double *pSqrtSigma, double *pW);
+void matinv(double *a, double *yvv, int *pm);
+void rnormn(int *pn, double *ans);
+
+void SimOneMVN_mxIW(double *nu, double *Lbdinvhlf, double *f1f2, int *pd, 
+                    int *pnreps, int *pN, double *es, double *YY)
 {
-  long i, j, k, l, d, d2, N, nreps, mxnreps, Jrand;
-  long *lbuff;
+  int i, j, k, l, d, d2, N, nreps, mxnreps, Jrand;
+  int *lbuff;
 
   double xd, sm, tstnu, nu_1, nu_2, zz, lambda, f_1, f_2;
 
@@ -23,7 +25,7 @@ void SimOneMVN_mxIW(double *nu, double *Lbdinvhlf, double *f1f2, long *pd,
   mxnreps=0;
   for(l=0;l<N;l++) if(mxnreps < *(pnreps+l)) mxnreps = *(pnreps+l);
 
-  lbuff         = (long   *)S_alloc(        1,sizeof(long));
+  lbuff         = (int   *)S_alloc(        1,sizeof(int));
 
   df            = (double *)S_alloc(        1, sizeof(double));
   pW            = (double *)S_alloc(       d2, sizeof(double));

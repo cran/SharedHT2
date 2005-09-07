@@ -80,7 +80,7 @@ SimMVN.mxIW(nsim, shape = NULL, rate = NULL, theta = NULL, nreps,
 \examples{\dontrun{
   SimResults <- 
     SimMVN.mxIW(nsim=500, theta=EBfit(fit.SimAffyDat)$coef, Ngenes=12625,
-                nreps=3, FDRlist = 0.05*(1:5), effect.size = c(rep(7.5/3^{0.5},
+                nreps=3, FDRlist = 0.05*(1:5), effect.size = c(rep(4.33,
                 100), rep(0, 12625 - 100), f1f2 = c(1/4, 1/2))
           
 # Or create a batch file like this
@@ -90,7 +90,7 @@ SimMVN.mxIW(nsim, shape = NULL, rate = NULL, theta = NULL, nreps,
   nreps <- 3
   Ngenes <- 12625
   nTP <- 100
-  effect.size <- c(rep(7.5/3^{0.5}, nTP), rep(0, Ngenes - nTP)
+  effect.size <- c(rep(4.33, nTP), rep(0, Ngenes - nTP)
   f1f2 <- c(1/4, 1/2)
   theta <- EBfit(fit.SimAffyDat)$coef
 

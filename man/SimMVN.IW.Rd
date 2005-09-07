@@ -71,7 +71,7 @@ SimMVN.IW(nsim, shape = NULL, rate = NULL, theta = NULL, nreps,
 \examples{\dontrun{
   SimResults <- 
     SimMVN.IW(nsim=500, theta=EBfit(fit.SimAffyDat)$coef, Ngenes=12625,
-              nreps=3, FDRlist = 0.05*(1:5), effect.size = c(rep(7.5/3^{0.5}, 100), 
+              nreps=3, FDRlist = 0.05*(1:5), effect.size = c(rep(4.33, 100), 
               rep(0, 100 - 100))
           
 # Or create a batch file like this
@@ -81,7 +81,7 @@ SimMVN.IW(nsim, shape = NULL, rate = NULL, theta = NULL, nreps,
   nreps <- 3
   Ngenes <- 12625
   nTP <- 100
-  effect.size <- c(rep(7.5/3^{0.5}, nTP), rep(0, Ngenes - nTP)
+  effect.size <- c(rep(4.33, nTP), rep(0, Ngenes - nTP)
   theta <- EBfit(fit.SimAffyDat)$coef
 
   SimResults <- SimMVN.IW(nsim=nsim, theta = theta, nreps = nreps, 

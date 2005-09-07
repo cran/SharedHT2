@@ -1,20 +1,20 @@
 #include<R.h>
 #include<Rmath.h>
 
-void rwishart1(double *pdf, long *pd, double *pSqrtSigma, double *pW);
-void matinv(double *a, double *yvv, long *pm);
-void rnormn(long *pn, double *ans);
+void rwishart1(double *pdf, int *pd, double *pSqrtSigma, double *pW);
+void matinv(double *a, double *yvv, int *pm);
+void rnormn(int *pn, double *ans);
 
-void printmat(double *pA, long nr, long nc, char *name);
-double chol(double *, double *, long *);
+void printmat(double *pA, int nr, int nc, char *name);
+double chol(double *, double *, int *);
 
-void SimOneMVN_IW(double *nu, double *Lbdinvhlf, long *pd, long *pnreps,
-               long *pN, double *es, double *YY)
+void SimOneMVN_IW(double *nu, double *Lbdinvhlf, int *pd, int *pnreps,
+               int *pN, double *es, double *YY)
 {
-  long i, j, k, l, d, npar, npar2, d2, N, nreps, mxnreps;
-  long *lbuff;
+  int i, j, k, l, d, d2, N, nreps, mxnreps;
+  int *lbuff;
 
-  double mu, xd, sm;
+  double xd, sm;
 
   double *df, *pW, *SgmHlf, *xbuff, *Y;
   double *Sigma, *LbdHlf, *sig, *SigInv;
@@ -27,7 +27,7 @@ void SimOneMVN_IW(double *nu, double *Lbdinvhlf, long *pd, long *pnreps,
   mxnreps=0;
   for(l=0;l<N;l++) if(mxnreps < *(pnreps+l)) mxnreps = *(pnreps+l);
 
-  lbuff       = (long   *)S_alloc(      1,sizeof(long));
+  lbuff       = (int   *)S_alloc(      1,sizeof(int));
 
   df          = (double *)S_alloc(        1, sizeof(double));
   pW          = (double *)S_alloc(       d2, sizeof(double));
@@ -61,7 +61,6 @@ void SimOneMVN_IW(double *nu, double *Lbdinvhlf, long *pd, long *pnreps,
     *lbuff = nreps * d;
     *df = *nu - xd - 1.0;
 
-    /*
     /* First an InvWish_d(nu, Lambda) matrix.  This is done                             */
     /* using the result:  if Sigma^(-1) ~ Wish_d(nu-d-1, Lambda^(-1)) then              */
     /* Sigma ~ InvWish_d(nu, Lambda).  I simulate N i.i.d. Wish_d(nu-d-1,Lambda^(-1))   */
@@ -73,7 +72,6 @@ void SimOneMVN_IW(double *nu, double *Lbdinvhlf, long *pd, long *pnreps,
     /* passed in.  Notice the need to check that Lambda is nonsingular and that         */
     /* nu > 2*d + 2 (required so that the expected value of the inverse wishart         */
     /* is finite.)                                                                      */
-    /*                                                                                  */
     rwishart1(df, pd, Lbdinvhlf, pW);
     matinv(pW, Sigma, pd);
     /*                                                                                  */

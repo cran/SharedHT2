@@ -4,19 +4,19 @@
 #define MDXMIN 2.470328e-323
 typedef struct{
   double *MVM;
-  long *pN;
-  long *pd;
-  long *nreps;
+  int *pN;
+  int *pd;
+  int *nreps;
 } Data;
 
 typedef double optimfn(int n, double *par, void *ex);
 typedef void optimgr(int n, double *par, double *gr, void *ex);
 
-void tloglik(double *ptheta, double *MVM, long *pN, long *pd, 
-             long *pnreps, double *pans);
+void tloglik(double *ptheta, double *MVM, int *pN, int *pd, 
+             int *pnreps, double *pans);
 
-void tGloglik(double *ptheta, double *MVM, long *pN, long *pd, 
-              long *pnreps, double *pG);
+void tGloglik(double *ptheta, double *MVM, int *pN, int *pd, 
+              int *pnreps, double *pG);
 
 void nmmin(int n, double *xin, double *x, double *Fmin, optimfn fn,
            int *fail, double abstol, double intol, void *ex,
@@ -30,23 +30,23 @@ void vmmin(int n, double *x, double *Fmin, optimfn fn, optimgr gr,
 
 void fHESS(double *x, Data *y, double *G, double *H, optimgr *grad);
 
-double lmgamma(double a, long m);
-double dimgamma(double a, long m);
-double trimgamma(double a, long m);
-double det(double *x, double *xd2buff, long *pd);
-void chol(double *s, double *t, long *pd);
-void matinv(double *a, double *ainv, long *pd);
-void printmat(double *pA, long nr, long nc, char *name);
+double lmgamma(double a, int m);
+double dimgamma(double a, int m);
+double trimgamma(double a, int m);
+double det(double *x, double *xd2buff, int *pd);
+void chol(double *s, double *t, int *pd);
+void matinv(double *a, double *ainv, int *pd);
+void printmat(double *pA, int nr, int nc, char *name);
 
 optimfn loglik;
 optimgr Gloglik, *grad;
 
-void Fit_MVF(double *ptheta0, double *MVM, long *pN, long *pd,
-		long *pnreps, long *pverbose, double *objval, 
-                double *estimate, long *fail, long *fncnt, long *grcnt, 
-                long *mask, long *usegr, double *G, double *H)
+void Fit_MVF(double *ptheta0, double *MVM, int *pN, int *pd,
+		int *pnreps, int *pverbose, double *objval, 
+                double *estimate, int *fail, int *fncnt, int *grcnt, 
+                int *mask, int *usegr, double *G, double *H)
 {
-  long npar, d, d2, N, i;
+  int npar, d, d2, N, i;
   int inpar, *ifail, *ifncnt, *igrcnt, *imask, verb;
   double xd, xN;
   Data *y;
@@ -97,10 +97,10 @@ void Fit_MVF(double *ptheta0, double *MVM, long *pN, long *pd,
 
 double loglik(int p, double *theta, void *yy)
 {
-  long N, d, d2, h, i, j, k, l;
+  int N, d, d2, h, i, j, k, l;
   double xd, xnreps, nu, detL, detS, detSplL, u, v, logl, logK;
 
-  long *nreps, *pd;
+  int *nreps, *pd;
   double *MVM, *Lambdahlf, *Lambda, *xd2buff, *SplL;
   Data *y;
 
@@ -164,11 +164,11 @@ double loglik(int p, double *theta, void *yy)
 
 void Gloglik(int inpar, double *theta, double *G, void *yy)
 {
-  long   N, d, d2, d4, npar, npar2, nparm1;
-  long   j, k, l, h, i1, i2, j2;
+  int   N, d, d2, d4, npar, npar2, nparm1;
+  int   j, k, l, h, i1, i2, j2;
   double xd, xnreps, nu, detL, detS, detSplL, v, eth0;
 
-  long   *nreps, *pd;
+  int   *nreps, *pd;
   double *MVM, *Lambdahlf, *Lambda, *Lambdainv, *xd2buff;
   double *SplL, *SplLinv, *dvecBdtheta, *dvecBprdtheta, *FactorII;
   double *Prod, *IxBpr, *BprxI, *IxLi, *IxSplLi, *FactorI;
@@ -360,9 +360,9 @@ void Gloglik(int inpar, double *theta, double *G, void *yy)
 
 }
 
-double lmgamma(double a, long m)
+double lmgamma(double a, int m)
 {
-  long i;
+  int i;
   double pi=3.141592653589793, s=0.0, xm, xi;
 
   xm = (double) m;
@@ -375,9 +375,9 @@ double lmgamma(double a, long m)
   return s;
 }
 
-double dimgamma(double a, long m)
+double dimgamma(double a, int m)
 {
-  long i;
+  int i;
   double s=0.0, xi;
 
   for(i=0;i<m;i++){
@@ -387,9 +387,9 @@ double dimgamma(double a, long m)
   return s;
 }
 
-double trimgamma(double a, long m)
+double trimgamma(double a, int m)
 {
-  long i;
+  int i;
   double s=0.0, xi;
 
   for(i=0;i<m;i++){
@@ -399,13 +399,13 @@ double trimgamma(double a, long m)
   return s;
 }
 
-double det(double *x, double *xd2buff, long *pd)
+double det(double *x, double *xd2buff, int *pd)
 {
-        long d, i;
+        int d, i;
 	double tmp, ans;
 
         d = *pd;
-
+        ans = 0.0;
 	if (d==1) ans = *x;
 	if (d>1){
           tmp = 1.0;
@@ -417,17 +417,17 @@ double det(double *x, double *xd2buff, long *pd)
 	return ans;
 }
 
-void tdet(double *x, double *xd2buff, long *pd, double *pans)
+void tdet(double *x, double *xd2buff, int *pd, double *pans)
 {
 	*pans = det(x, xd2buff, pd);
 }
 
-void tloglik(double *ptheta, double *MVM, long *pN, long *pd, 
-             long *pnreps, double *pans)
+void tloglik(double *ptheta, double *MVM, int *pN, int *pd, 
+             int *pnreps, double *pans)
 {
   Data *y;
   int inpar;
-  long d, npar;
+  int d, npar;
   y = (Data *)S_alloc(1, sizeof(Data));
 
   y->MVM = MVM;
@@ -443,11 +443,11 @@ void tloglik(double *ptheta, double *MVM, long *pN, long *pd,
 
 }
 
-void tGloglik(double *ptheta, double *MVM, long *pN, long *pd, 
-              long *pnreps, double *pG)
+void tGloglik(double *ptheta, double *MVM, int *pN, int *pd, 
+              int *pnreps, double *pG)
 {
   Data *y;
-  long d, npar;
+  int d, npar;
   int inpar;
 
   y = (Data *)S_alloc(1, sizeof(Data));
@@ -466,7 +466,7 @@ void tGloglik(double *ptheta, double *MVM, long *pN, long *pd,
 
 void fHESS(double *x, Data *y, double *G, double *H, optimgr *grad)
 {
-  long i,j,d,npar;
+  int i,j,d,npar;
   double h,temp,*G1;
   int inpar;
 
@@ -492,9 +492,9 @@ void fHESS(double *x, Data *y, double *G, double *H, optimgr *grad)
 
 }
 
-void printmat(double *pA, long nr, long nc, char *name)
+void printmat(double *pA, int nr, int nc, char *name)
 {
-  long j, k;
+  int j, k;
 
   Rprintf("%s = \n", name);
   for (j=0;j<nr;j++) {

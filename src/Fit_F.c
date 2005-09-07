@@ -4,9 +4,9 @@
 
 typedef struct{
   double *S;
-  long *pN;
-  long *pd;
-  long *nreps;
+  int *pN;
+  int *pd;
+  int *nreps;
 } DataEV;
 
 typedef double optimfn(int n, double *par, void *ex);
@@ -27,9 +27,9 @@ void fHESSEV(double *x, DataEV *y, double *G, double *H, optimgr *grad);
 optimfn loglikEV;
 optimgr GloglikEV, *gradEV;
 
-void Fit_F(double *ptheta0, double *S, long *pN, long *pd, long *pnreps,
-                 long *pverbose, double *objval, double *estimate, long *fail,
-                 long *fncount, long *grcount, long *mask, long *usegr,
+void Fit_F(double *ptheta0, double *S, int *pN, int *pd, int *pnreps,
+                 int *pverbose, double *objval, double *estimate, int *fail,
+                 int *fncount, int *grcount, int *mask, int *usegr,
                  double *G, double *H)
 {
   int inpar=2, *ifail, *ifncount, *imask, verb;
@@ -69,8 +69,8 @@ void Fit_F(double *ptheta0, double *S, long *pN, long *pd, long *pnreps,
 
 double loglikEV(int inpar, double *theta, void *yy)
 {
-  long N, d, h;
-  long *nreps;
+  int N, d, h;
+  int *nreps;
   double xd, loglik, logC, s, r, xn, xn1_o2, xn2_o2, q, q_o2r;
   double *S;
   DataEV *y;
@@ -101,8 +101,8 @@ double loglikEV(int inpar, double *theta, void *yy)
 
 void GloglikEV(int inpar, double *theta, double *G, void *yy)
 {
-  long N, d, h;
-  long *nreps;
+  int N, d, h;
+  int *nreps;
   double xd, g1, g2, s, r, xn, xn1_o2, xn2_o2, q, q_o2r;
   double *S;
   DataEV *y;
@@ -134,10 +134,10 @@ void GloglikEV(int inpar, double *theta, double *G, void *yy)
 
 void fHESSEV(double *x, DataEV *y, double *G, double *H, optimgr *grad)
 {
-  long i,j,d,npar;
+  int i,j,d,npar;
   double h,temp,*G1;
   int inpar=2;
-  npar = (long)inpar;
+  npar = (int)inpar;
 
   d = *y->pd;
   G1 = (double *)Calloc(npar, double);

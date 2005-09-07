@@ -1,19 +1,19 @@
 #include<R.h>
 #include<Rmath.h>
-void rnormn(long *pn, double *ans);
-void rnormns(long *pn, double *ans);
-void rgamman(long *pn, double *shape, double *scale, double *ans);
-void rgammans(long *pn, double *shape, double *scale, double *ans);
-void trwish1(double *pdf, long *pd, double *pSqrtSigma, double *pW);
-void rwishart1(double *pdf, long *pd, double *pSqrtSigma, double *pW);
-void rwishart1s(double *pdf, long *pd, double *pSqrtSigma, double *pW);
-void rwishartn(long *pn, double *pdf, long *pd, double *pSqrtSigma, long *prows,
+void rnormn(int *pn, double *ans);
+void rnormns(int *pn, double *ans);
+void rgamman(int *pn, double *shape, double *scale, double *ans);
+void rgammans(int *pn, double *shape, double *scale, double *ans);
+void trwish1(double *pdf, int *pd, double *pSqrtSigma, double *pW);
+void rwishart1(double *pdf, int *pd, double *pSqrtSigma, double *pW);
+void rwishart1s(double *pdf, int *pd, double *pSqrtSigma, double *pW);
+void rwishartn(int *pn, double *pdf, int *pd, double *pSqrtSigma, int *prows,
 	       double *pW);
 
-void rwishartns(long *pn, double *pdf, long *pd, double *pSqrtSigma, long *prows, 
+void rwishartns(int *pn, double *pdf, int *pd, double *pSqrtSigma, int *prows, 
 		double *pW)
 {
-  long n, d, d2, i, j, k, h, irows;
+  int n, d, d2, i, j, k, h, irows;
   double df, sm, *Z, *Zsig;
   n = *pn;
   df = *pdf;
@@ -68,10 +68,10 @@ void rwishartns(long *pn, double *pdf, long *pd, double *pSqrtSigma, long *prows
   Free(Zsig);
 }
 
-void rwishartn(long *pn, double *pdf, long *pd, double *pSqrtSigma, long *prows,
+void rwishartn(int *pn, double *pdf, int *pd, double *pSqrtSigma, int *prows,
                 double *pW)
 {
-  long n, d, d2, i, j, k, h, irows;
+  int n, d, d2, i, j, k, h, irows;
   double df, sm, *Z, *Zsig;
   n = *pn;
   df = *pdf;
@@ -124,9 +124,9 @@ void rwishartn(long *pn, double *pdf, long *pd, double *pSqrtSigma, long *prows,
   Free(Zsig);
 }
 
-void rwishart1s(double *pdf, long *pd, double *pSqrtSigma, double *pW)
+void rwishart1s(double *pdf, int *pd, double *pSqrtSigma, double *pW)
 {
-  long d, d2, i, j, k, h;
+  int d, d2, i, j, k, h;
   double df, sm, *Z, *Zsig;
   df = *pdf;
   d = *pd;
@@ -173,9 +173,9 @@ void rwishart1s(double *pdf, long *pd, double *pSqrtSigma, double *pW)
   Free(Zsig);
 }
 
-void rwishart1(double *pdf, long *pd, double *pSqrtSigma, double *pW)
+void rwishart1(double *pdf, int *pd, double *pSqrtSigma, double *pW)
 {
-  long d, d2, i, j, k, h;
+  int d, d2, j, k, h;
   double df, sm, *Z, *Zsig;
   df = *pdf;
   d = *pd;
@@ -216,32 +216,32 @@ void rwishart1(double *pdf, long *pd, double *pSqrtSigma, double *pW)
   Free(Zsig);
 }
 
-void trwish1(double *pdf, long *pd, double *pSqrtSigma, double *pW)
+void trwish1(double *pdf, int *pd, double *pSqrtSigma, double *pW)
 {
   GetRNGstate();
   rwishart1(pdf, pd, pSqrtSigma, pW);
   PutRNGstate();
 }
 
-void rgammans(long *pn, double *shape, double *scale, double *ans)
+void rgammans(int *pn, double *shape, double *scale, double *ans)
 {
-  long n, i;
+  int n, i;
   n = *pn;
   GetRNGstate();
   for(i=0;i<n;i++) *(ans+i) = rgamma(*shape, *scale);
   PutRNGstate();
 }
 
-void rgamman(long *pn, double *shape, double *scale, double *ans)
+void rgamman(int *pn, double *shape, double *scale, double *ans)
 {
-  long n, i;
+  int n, i;
   n = *pn;
   for(i=0;i<n;i++) *(ans+i) = rgamma(*shape, *scale);
 }
 
-void rnormns(long *pn, double *ans)
+void rnormns(int *pn, double *ans)
 {
-	long i,n;
+	int i,n;
 	n = *pn;
 
         GetRNGstate();
@@ -252,9 +252,9 @@ void rnormns(long *pn, double *ans)
 	PutRNGstate();
 }
 
-void rnormn(long *pn, double *ans)
+void rnormn(int *pn, double *ans)
 {
-  long i,n;
+  int i,n;
   n = *pn;
 
   for (i=0;i<n;i++)

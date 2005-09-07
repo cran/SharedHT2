@@ -16,14 +16,10 @@
 \note{
   All but the first 100 rows have population mean zero.
   The first 100 rows have group specific population means equal to 
-  $7.5/3^{0.5}$ times the square root of the averaged sample variances across 
-  genes. Strikingly, eye inspection of the dataset (compare the first 100
-  rows to the rows which follow) reveals positive and negative numbers among
-  observations representing all but the first 100 rows. However, all tests
-  except the emprical Bayes Hotelling T-squared tests are unable to correctly
-  identify these "genes" without high false positive rates.  The sampling
-  distribution used in the simulation is the Wishart/Inverse Wishart model.
-  See the manuscript "sharedHT2.pdf" in the ./doc directory.
+  $4.33$ times the square root of the averaged sample variances across 
+  genes. The sampling distribution used in the simulation is the
+  Wishart/Inverse Wishart model. See the manuscript "sharedHT2.pdf" in
+  the ./doc directory. 
 }
 
 \references{

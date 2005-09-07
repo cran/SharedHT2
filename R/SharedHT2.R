@@ -386,12 +386,12 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
     }
 
     Ybar <- matrix(mu.g %*% t(M), N, d)
-    Top <- nreps^2*((Ybar*Ybar)%*%rep(1,d))
+    Top <- nreps*((Ybar*Ybar)%*%rep(1,d))
 
-    ShUT2.stat <- Top/(2*r + S)*(2*s + nreps - d)/d
-    ShUT2.pval <- 1-pf(ShUT2.stat, d, 2*s + nreps - d)
-    UT2.stat <- Top/S*(nreps-d)/d
-    UT2.pval <- 1-pf(UT2.stat, d, nreps-d)
+    ShUT2.stat <- Top/(2*r + S)*(2*s + p*(nreps - 1))/d
+    ShUT2.pval <- 1-pf(ShUT2.stat, d, 2*s + p*(nreps - 1))
+    UT2.stat <- Top/S*p*(nreps-1)/d
+    UT2.pval <- 1-pf(UT2.stat, d, p*(nreps-1))
     ans <- list()
     ans$data <- as.data.frame(list(GeneId = id, ShUT2.stat = ShUT2.stat,
                               ShUT2.pval = ShUT2.pval, UT2.stat = UT2.stat,
@@ -779,9 +779,11 @@ function(data, labels, subset, H0=NULL, Var.Struct=NULL, na.action=na.pass)
   N.balcd.rows <- length(balcd.rows)
   nreps <- apply(Y[, 1:n], 1, FUN=function(x)sum(!is.na(x)))
 
+  if(missing(H0)) H0 <- ""
+  if(missing(Var.Struct)) Var.Struct <- ""
   vs <- charmatch(Var.Struct, c("simple", "general"), 0)
   h0 <- charmatch(H0, c("no.trend","equal.means","zero.means"), 0)
-  if(h0==3 && vs==2) not.enough <- nreps <= p
+  if((h0==3 && vs==2) || h0==0 || vs == 0) not.enough <- nreps <= p
   if(h0==2 && vs==2) not.enough <- nreps <= (p-1)
   if(h0==1 || vs==1) not.enough <- nreps < 2
   if(H0=="user" && vs==2) not.enough <- nreps <= qr(M)$rank
@@ -1334,7 +1336,7 @@ function(e.I, e.II, nreps, d)
   "%,%" <- function(x,y)paste(x,y,sep="")
   obj <- function(logtheta, nreps, d)
          {
-           df1 <- nreps*d
+           df1 <- d
            df2 <- d*(nreps-1)
            theta <- exp(logtheta)
            ncp <- nreps*d*exp(2*logtheta)
@@ -1345,7 +1347,7 @@ function(e.I, e.II, nreps, d)
            ans
          }
   ans <- uniroot(f=obj, interval=c(-5,5), nreps=nreps, d=d)
-  df1 <- nreps*d
+  df1 <- d
   df2 <- d*(nreps-1)
   logtheta <- ans$root
   theta <- exp(logtheta)
@@ -1429,7 +1431,7 @@ function (y, x)
 }
 
 ShHT2News <- function() {
-  newsfile <- file.path(system.file(package="SharedHT2"), "NEWS")
+  newsfile <- file.path(system.file(package="SharedHT2"), c("DESCRIPTION","NEWS"))
   file.show(newsfile)
 }
 

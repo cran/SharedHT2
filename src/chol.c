@@ -2,9 +2,9 @@
 #include <Rmath.h>
 #define MDXMIN 2.470328e-323
 
-void chol(double *s, double *t, long *pd)
+void chol(double *s, double *t, int *pd)
 {
-	long d, d2, i, j, k;
+	int d, d2, i, j, k;
 	double sum, ansij;
 
 	d = *pd;

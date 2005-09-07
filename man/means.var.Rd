@@ -27,13 +27,24 @@
       c("log2.grp1", "log2.grp2")}}
   \item{subset}{an index vector indicating which rows should be used.
     (NOTE: If given, this argument must be named.)}
-  \item{H0}{Form of null hypothesis for calls from inside of
-    EB.Anova. These arguments are neccesary so that missingness is
-    handled consistently. If calling yourself just specify the blank
-    string ""}
-  \item{Var.Struct}{The \code{Var.Struct} argument from EB.Anova. See
-    above.}
-  \item{na.action}{See above}
+  \item{H0}{Character string specifying the null hypothesis. See the
+    documentation for \code{EB.Anova}. This argument is tested to
+    determine the minimum number of replicates neccesary and is used
+    internally in order that rows deleted due to too many missing
+    replicates during a call to EB.Anova are also deleted during an
+    embedded call to this function. The user can either specify this
+    argument or leave it unspecified.}
+  \item{Var.Struct}{Character string specifying the variance
+    structure. See the documentation for \code{EB.Anova}. This argument
+    is tested to determine the minimum number of replicates neccesary
+    and is used internally in order that rows deleted due to too many
+    missing replicates during a call to \code{EB.Anova} are also deleted
+    during an embedded call to this function. The user can either
+    specify this argument or leave it unspecified.} 
+  \item{na.action}{Specify \code{na.action} = \code{na.pass} if your
+    data contains \code{NA}'s and you wish to treat them as missing at
+    random. Otherwise, leave it unspecified. See the documentation for
+    \code{EB.Anova}.} 
 }
  
 \value{

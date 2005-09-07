@@ -3,23 +3,23 @@
 #include <math.h>
 #include <R.h>
 
-void ludcmp(double *, long, long *, double *);
-void lubksb(double *, long, long *, double *);
+void ludcmp(double *, int, int *, double *);
+void lubksb(double *, int, int *, double *);
 /*                                                        */
-/*  pm : pointer to long, m.                              */
+/*  pm : pointer to int, m.                              */
 /*   a : pointer to double of length m^2                  */
 /* yvv : pointer to a double of length m^2                */
 /*       all space must be allocated in calling routine   */
 /* NOTE: the routine writes over the contents of 'a'      */
 /*                                                        */
-void matinv(double *a, double *yvv, long *pm)
+void matinv(double *a, double *yvv, int *pm)
 {
-	double *yvcol, *dvv, sum, aamax, dum;
-	long i,j, m, *indx;
+	double *yvcol, *dvv;
+	int i,j, m, *indx;
 
 	m = *pm;
 
-	indx = (long *) Calloc(m, long);
+	indx = (int *) Calloc(m, int);
 	 dvv = (double *) Calloc(1, double);
  
 
@@ -40,10 +40,10 @@ void matinv(double *a, double *yvv, long *pm)
 	Free(dvv);
 }
 
-void ludcmp(double *a, long n, long *indx, double *pd)
+void ludcmp(double *a, int n, int *indx, double *pd)
 {
 	double tiny, *vv, aamax, sum, dum, d;
-	long i, j, k, imax;
+	int i, j, k, imax=0;
 
 	   d = *pd;
 
@@ -100,9 +100,9 @@ void ludcmp(double *a, long n, long *indx, double *pd)
 	Free(vv);
 }
 
-void lubksb(double *a, long n, long *indx, double *b)
+void lubksb(double *a, int n, int *indx, double *b)
 {
-	long ii, ll, i, j;
+	int ii, ll, i, j;
 	double sum;
 
 	ii = -1;

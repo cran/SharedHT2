@@ -43,33 +43,36 @@
 #include<R.h>
 #include<Rmath.h>
 
+void chol(double *s, double *t, int *pd);
+
 #define EPS 1.0e-7
-#define vabsmax(v, n, l, a, sgn) a=0.0;                             \
+#define vabsmax(v, n, l, a, sgn) sgn=1.0;                           \
+                                 a=0.0;                             \
                                  for(l=0;l<n;l++)                   \
                                    if(fabs(*(v+l))>a){              \
                                      a=fabs(*(v+l));                \
                                      sgn = (*(v+l)>0 ? 1.0 : -1.0); \
                                    }                                \
-                                 0
+                                 a=a;
 
 #define MIN(x,y) (x<=y ? x : y)
 
 typedef struct{
   double *MVM;
-  long *pN;
-  long *pd;
-  long *nreps;
+  int *pN;
+  int *pd;
+  int *nreps;
 } Data;
 
 typedef struct{
   double *S;
-  long *pN;
-  long *pd;
-  long *nreps;
+  int *pN;
+  int *pd;
+  int *nreps;
 } DataEV;
 
 typedef struct{
-  long id;
+  int id;
   double mean;
   double ShHT2;
   double ShHT2pval;
@@ -87,11 +90,11 @@ typedef int CmprFun(const void *x, const void *y);
 
 CmprFun cmprShHT2, cmprHT2, cmprShUT2, cmprUT2, *cmpr;
 
-void tloglik(double *ptheta, double *MVM, long *pN, long *pd, 
-             long *pnreps, double *pans);
+void tloglik(double *ptheta, double *MVM, int *pN, int *pd, 
+             int *pnreps, double *pans);
 
-void tGloglik(double *ptheta, double *MVM, long *pN, long *pd, 
-              long *pnreps, double *pG);
+void tGloglik(double *ptheta, double *MVM, int *pN, int *pd, 
+              int *pnreps, double *pG);
 
 void nmmin(int n, double *xin, double *x, double *Fmin, optimfn fn,
            int *fail, double abstol, double intol, void *ex,
@@ -106,38 +109,38 @@ void vmmin(int n, double *x, double *Fmin,
 void fHESS(double *x, Data *y, double *G, double *H, 
 	   void (*grad)(int p, double *x, double *G, Data *y));
 
-void rwishart1(double *pdf, long *pd, double *pSqrtSigma, double *pW);
-void matinv(double *a, double *yvv, long *pm);
-void rnormn(long *pn, double *ans);
+void rwishart1(double *pdf, int *pd, double *pSqrtSigma, double *pW);
+void matinv(double *a, double *yvv, int *pm);
+void rnormn(int *pn, double *ans);
 
-void printmat(double *pA, long nr, long nc, char *name);
+void printmat(double *pA, int nr, int nc, char *name);
 
-void Fit_MVF1(double *ptheta0, long *pverbose, Data *y, double *objval,
-                 double *estimate, long *fail, long *fncnt, long *grcnt, 
-                 long *mask, long *usegr, double *G, double *H);
+void Fit_MVF1(double *ptheta0, int *pverbose, Data *y, double *objval,
+                 double *estimate, int *fail, int *fncnt, int *grcnt, 
+                 int *mask, int *usegr, double *G, double *H);
 
-void Fit_F1(double *ptheta0, long *pverbose, DataEV *y, double *objval, 
-                  double *estimate, long *fail, long *fncnt, long *grcnt, 
-                  long *mask, long *usegr, double *G, double *H);
+void Fit_F1(double *ptheta0, int *pverbose, DataEV *y, double *objval, 
+                  double *estimate, int *fail, int *fncnt, int *grcnt, 
+                  int *mask, int *usegr, double *G, double *H);
 
-void printglist(gene *x, long N, char *strng);
+void printglist(gene *x, int N, char *strng);
 
-void SimMVN_mxIW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask, 
-               long *usegr, long *pnsim, double *nu, double *Lbdinvhlf, long *pd, 
-               long *pnreps, long *pN, double *es, double *f1f2, double *coef, 
-               double *coefEV, double *FDRlist, long *pnFDRlist, 
+void SimMVN_mxIW(int *verb, int *fail, int *fncnt, int *grcnt, int *mask, 
+               int *usegr, int *pnsim, double *nu, double *Lbdinvhlf, int *pd, 
+               int *pnreps, int *pN, double *es, double *f1f2, double *coef, 
+               double *coefEV, double *FDRlist, int *pnFDRlist, 
                double *fdrtbl, double *roctbl)
 {
-  long i, j, k, l, d, npar, npar2, d2, d4, N, nreps, mxnreps, nsim, isim, indx;
-  long ntruepos, nFDRlist, flagsig, Nsig, nTP, nFP, Jrand;
-  long *lbuff, *pnpar;
+  int i, j, k, l, d, npar, npar2, d2, d4, N, nreps, mxnreps, nsim, isim, indx;
+  int ntruepos, nFDRlist, flagsig, Nsig, nTP, nFP, Jrand;
+  int *lbuff, *pnpar;
   char *itfnm;
 
-  double mu, xnreps, xN, xd, sm, smEV, xn2, nu_isim, r, s, vamx, sgn, xl, tstnu, nu_1, nu_2;
+  double xnreps, xN, xd, sm, smEV, xn2, nu_isim, r, s, vamx, sgn, xl, tstnu, nu_1, nu_2;
   double Top, stat1, stat2, stat3, stat4, pval1, pval2, pval3, pval4, zz, lambda, f_1, f_2;
 
   double *df, *pW, *SgmHlf, *xbuff, *muhat, *res, *Sighat, *WSSQ, *ptheta0, *rFDR;
-  double *objv, *estimate, *estimater, *G, *H, *Y, *Sigma, *Lambda_isim, *LbdHlf, *sig;
+  double *objv, *estimate, *G, *H, *Y, *Sigma, *Lambda_isim, *LbdHlf, *sig;
   double *SigInv;
 
   Data *y;
@@ -161,8 +164,8 @@ void SimMVN_mxIW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
   mxnreps=0;
   for(l=0;l<N;l++) if(mxnreps < *(pnreps+l)) mxnreps = *(pnreps+l);
 
-  lbuff       = (long   *)S_alloc(        1, sizeof(long));
-  pnpar       = (long   *)S_alloc(        1, sizeof(long));
+  lbuff       = (int   *)S_alloc(        1, sizeof(int));
+  pnpar       = (int   *)S_alloc(        1, sizeof(int));
 
   df          = (double *)S_alloc(        1, sizeof(double));
   pW          = (double *)S_alloc(       d2, sizeof(double));
@@ -222,7 +225,7 @@ void SimMVN_mxIW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
   /*  name the 'iterno' file uniquely  */
   strcat(itfnm, "iterno");
   for(i=0;i<8;i++) {
-    indx = (long) (62.0*unif_rand());
+    indx = (int) (62.0*unif_rand());
     *ch = *(alnu + indx);
     strncat(itfnm, ch, 1);
   }
@@ -401,14 +404,14 @@ void SimMVN_mxIW(long *verb, long *fail, long *fncnt, long *grcnt, long *mask,
       /*shared variance univariate T2 */
       sm = 0.0;
       for(k=0;k<d;k++) sm+= (*(muhat + d*l + k))*(*(muhat + d*l + k));
-      Top = xnreps*xnreps*sm;
+      Top = xnreps*sm;
       stat3 = Top/(2.0*r + *(WSSQ+l));
-      stat3 = (2.0*s + xnreps - xd)/xd * stat3;
+      stat3 = (2.0*s + xd*(xnreps - 1.0))/xd * stat3;
       pval3 = pf(stat3, xd, 2.0*s + xd*(xnreps-1.0), 0, 0);
 
       /*ordinary univariate T2 */
       stat4 = Top/(*(WSSQ+l));
-      stat4 = (xnreps - xd)/xd * stat4;
+      stat4 = xd*(xnreps - 1.0)/xd * stat4;
       pval4 = pf(stat4, xd, xd*(xnreps-1.0), 0, 0);
 
       (genelist + l)->id = l;

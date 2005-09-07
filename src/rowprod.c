@@ -1,6 +1,6 @@
-void rowprod(double *x, double *y, double *z, long *pn, long *pna1, long *pnb1, long *pnb2){
+void rowprod(double *x, double *y, double *z, int *pn, int *pna1, int *pnb1, int *pnb2){
 
-        long n, na1, nb1, nb2, l, i, j, k;
+        int n, na1, nb1, nb2, l, i, j, k;
         double s;
 	n = *pn;
         na1 = *pna1;

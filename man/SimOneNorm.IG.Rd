@@ -49,7 +49,7 @@ SimOneNorm.IG(shape = NULL, rate = NULL, theta = NULL, ngroups, nreps, Ngenes,
   ngroups <- 2
   nreps <- 3
   nTP <- 100
-  effect.size <- c(rep(7.5/nreps^{0.5}, nTP), rep(0, Ngenes-nTP))
+  effect.size <- c(rep(4.33, nTP), rep(0, Ngenes-nTP))
 
   MyDat <- SimOneNorm.IG(shape=shape, rate=rate, ngroups=ngroups, Ngenes=Ngenes, nreps=nreps, 
                          effect.size=effect.size)

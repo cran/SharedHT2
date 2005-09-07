@@ -1,9 +1,9 @@
-void matinv(double *a, double *yvv, long *pm);
+void matinv(double *a, double *yvv, int *pm);
 
-void rowinv(double *x, double *z, long *pn, long *pnx)
+void rowinv(double *x, double *z, int *pn, int *pnx)
 {
 
-        long n, nx, l;
+        int n, nx, l;
 
         n = *pn;
         nx = *pnx;

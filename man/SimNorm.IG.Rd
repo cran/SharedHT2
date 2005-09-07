@@ -72,13 +72,13 @@ SimNorm.IG(nsim, shape = NULL, rate = NULL, theta = NULL, ngroups, nreps,
   SimResults <-
     SimNorm.IG(nsim=10, theta=c(0.6605673, -3.2137414), Ngenes=12625,
                ngroups=2, nreps=3, FDRlist = 0.05*(1:5), effect.size =
-               c(rep(7.5/3^{0.5}, 100), rep(0, 12625 - 100)))
+               c(rep(4.33, 100), rep(0, 12625 - 100)))
 
 \dontrun{
   SimResults <- 
     SimNorm.IG(nsim=500, theta=c(0.6605673, -3.2137414), Ngenes=12625,
                ngroups=2, nreps=3, FDRlist = 0.05*(1:5), effect.size = 
-               c(rep(7.5/3^{0.5}, 100), rep(0, 12625 - 100))
+               c(rep(4.33, 100), rep(0, 12625 - 100))
           
 # Or create a batch file like this
 # contents of mysim.R:
@@ -88,7 +88,7 @@ SimNorm.IG(nsim, shape = NULL, rate = NULL, theta = NULL, ngroups, nreps,
   nreps <- 3
   Ngenes <- 12625
   nTP <- 100
-  effect.size <- c(rep(7.5/3^{0.5}, nTP), rep(0, Ngenes - nTP)
+  effect.size <- c(rep(4.33, nTP), rep(0, Ngenes - nTP)
   theta <- c(0.6605673, -3.2137414)
 
   SimResults <- SimNorm.IG(nsim=nsim, theta = theta, ngroups=ngroups, 

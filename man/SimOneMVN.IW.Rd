@@ -48,7 +48,7 @@ SimOneMVN.IW(shape = NULL, rate = NULL, theta = NULL, nreps, Ngenes,
   Ngenes <- 12625
   nreps <- 3
   nTP <- 100
-  effect.size <- c(rep(7.5/nreps^{0.5}, nTP), rep(0, Ngenes-nTP))
+  effect.size <- c(rep(4.33, nTP), rep(0, Ngenes-nTP))
 
   MyDat <- SimOneMVN.IW(shape=shape, rate=rate, Ngenes=Ngenes, nreps=nreps, 
                         effect.size=effect.size)

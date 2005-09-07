@@ -25,18 +25,17 @@
                                    }                                \
                                  0
 
-void rnormn(long *pn, double *ans);
+void rnormn(int *pn, double *ans);
 
-void printmat(double *pA, long nr, long nc, char *name);
+void printmat(double *pA, int nr, int nc, char *name);
 
-void SimOneNorm_IG(double *shape, double *rate, long *pd, long *pnreps,
-                   long *pN, double *es, double *YY)
+void SimOneNorm_IG(double *shape, double *rate, int *pd, int *pnreps,
+                   int *pN, double *es, double *YY)
 {
-  long i, j, l, d, N, nreps, mxnreps;
-  long *lbuff;
+  int i, j, l, d, N, nreps, mxnreps;
+  int *lbuff;
 
-  double sig, sigma2, sigma, xd;
-  double Top, stat1, stat2, stat3, stat4, pval1, pval2, pval3, pval4;
+  double sig, sigma2, sigma;
 
   double *xbuff, *Y;
 
@@ -46,7 +45,7 @@ void SimOneNorm_IG(double *shape, double *rate, long *pd, long *pnreps,
   mxnreps=0;
   for(l=0;l<N;l++) if(mxnreps < *(pnreps+l)) mxnreps = *(pnreps+l);
 
-  lbuff       = (long   *)S_alloc(        1, sizeof(long));
+  lbuff       = (int   *)S_alloc(        1, sizeof(int));
   xbuff       = (double *)S_alloc(        d, sizeof(double));
   Y           = (double *)S_alloc(mxnreps*d, sizeof(double));
 
