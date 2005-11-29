@@ -57,7 +57,7 @@ typedef double optimfn(int n, double *par, void *ex);
 typedef void optimgr(int n, double *par, double *gr, void *ex);
 typedef int CmprFun(const void *x, const void *y);
 
-CmprFun cmprShHT2, cmprHT2, cmprShUT2, cmprUT2, *cmpr;
+CmprFun cmprShHT2, cmprHT2, cmprShUT2, cmprUT2;
 
 void tloglik(double *ptheta, double *MVM, int *pN, int *pd, 
              int *pnreps, double *pans);
@@ -361,8 +361,7 @@ void SimNorm_IG(int *verb, int *fail, int *fncnt, int *grcnt, int *mask,
 
 
     /*---ShHT2---BLOCK----------------------------------------------------------------*/
-    cmpr = &cmprShHT2;                                                            
-    qsort(genelist, N, sizeof(gene), cmpr);                                          
+    qsort(genelist, N, sizeof(gene), &cmprShHT2);
                                                                                          
     /* update ShHT2 portion of fdrtbl */
     for(j=0;j<nFDRlist;j++){                                                              
@@ -394,8 +393,7 @@ void SimNorm_IG(int *verb, int *fail, int *fncnt, int *grcnt, int *mask,
     }                                                                             
 
     /*---HT2---BLOCK-------------------------------------------------------------------*/
-    cmpr = &cmprHT2;                                                              
-    qsort(genelist, N, sizeof(gene), cmpr); 
+    qsort(genelist, N, sizeof(gene), &cmprHT2); 
                                           
     /* update HT2 portion of fdrtbl */
     for(j=0;j<nFDRlist;j++){ 
@@ -427,8 +425,7 @@ void SimNorm_IG(int *verb, int *fail, int *fncnt, int *grcnt, int *mask,
     }
 
     /*---ShUT2---BLOCK------------------------------------------------------------------*/
-    cmpr = &cmprShUT2;            
-    qsort(genelist, N, sizeof(gene), cmpr);
+    qsort(genelist, N, sizeof(gene), &cmprShUT2);
 
     /* update ShUT2 portion of fdrtbl */
     for(j=0;j<nFDRlist;j++){      
@@ -460,8 +457,7 @@ void SimNorm_IG(int *verb, int *fail, int *fncnt, int *grcnt, int *mask,
     }
 
     /*---UT2---BLOCK-------------------------------------------------------------------*/
-    cmpr = &cmprUT2;              
-    qsort(genelist, N, sizeof(gene), cmpr);        
+    qsort(genelist, N, sizeof(gene), &cmprUT2);
 
     /* update UT2 portion of fdrtbl */
     for(j=0;j<nFDRlist;j++){      
@@ -500,4 +496,5 @@ void SimNorm_IG(int *verb, int *fail, int *fncnt, int *grcnt, int *mask,
   }
   PutRNGstate();
   fclose(itfnm_ptr);
+
 }

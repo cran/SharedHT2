@@ -57,7 +57,7 @@ typedef double optimfn(int n, double *par, void *ex);
 typedef void optimgr(int n, double *par, double *gr, void *ex);
 typedef int CmprFun(const void *x, const void *y);
 
-CmprFun cmprShHT2, cmprHT2, cmprShUT2, cmprUT2, *cmpr;
+CmprFun cmprShHT2, cmprHT2, cmprShUT2, cmprUT2;
 
 void tloglik(double *ptheta, double *MVM, int *pN, int *pd, 
              int *pnreps, double *pans);
@@ -133,9 +133,8 @@ void SimMVN_IW(int *verb, int *fail, int *fncnt, int *grcnt, int *mask,
   mxnreps=0;
   for(l=0;l<N;l++) if(mxnreps < *(pnreps+l)) mxnreps = *(pnreps+l);
 
-
-  lbuff       = (int   *)S_alloc(        1, sizeof(  int));
-  pnpar       = (int   *)S_alloc(        1, sizeof(  int));
+  lbuff       = (int   *)S_alloc(        1,   sizeof(int));
+  pnpar       = (int   *)S_alloc(        1,   sizeof(int));
 
   df          = (double *)S_alloc(        1, sizeof(double));
   pW          = (double *)S_alloc(       d2, sizeof(double));
@@ -158,12 +157,13 @@ void SimMVN_IW(int *verb, int *fail, int *fncnt, int *grcnt, int *mask,
   LbdHlf      = (double *)S_alloc(       d2, sizeof(double));
   sig         = (double *)S_alloc(        d, sizeof(double));
   rFDR        = (double *)S_alloc(        N, sizeof(double));
-  itfnm       = (char   *)S_alloc(      100, sizeof(  char));
-  alnu        = (char   *)S_alloc(       62, sizeof(  char));
-  ch          = (char   *)S_alloc(        2, sizeof(  char));
-  y           = (Data   *)S_alloc(        1, sizeof(  Data));
+  itfnm       = (char   *)S_alloc(      100, sizeof(char));
+  alnu        = (char   *)S_alloc(       62, sizeof(char));
+  ch          = (char   *)S_alloc(        2, sizeof(char));
+  y           = (Data   *)S_alloc(        1, sizeof(Data));
   yEV         = (DataEV *)S_alloc(        1, sizeof(DataEV));
-  genelist    = (gene   *)S_alloc(        N, sizeof(  gene));
+  genelist    = (gene   *)S_alloc(        N, sizeof(gene));
+
 
   alnu = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   *(ch+1) = '\0';
@@ -389,8 +389,7 @@ void SimMVN_IW(int *verb, int *fail, int *fncnt, int *grcnt, int *mask,
     }
 
     /*---ShHT2---BLOCK--------------------------------------------------------------------------------*/
-    cmpr = &cmprShHT2;                                                                                
-    qsort(genelist, N, sizeof(gene), cmpr);                                                           
+    qsort(genelist, N, sizeof(gene), &cmprShHT2);
                                                                                                       
     /* update ShHT2 portion of fdrtbl */
     for(j=0;j<nFDRlist;j++){                                                                          
@@ -420,8 +419,7 @@ void SimMVN_IW(int *verb, int *fail, int *fncnt, int *grcnt, int *mask,
     }                                                                                                 
                                                                                                       
     /*---HT2---BLOCK----------------------------------------------------------------------------------*/
-    cmpr = &cmprHT2;                                                                                  
-    qsort(genelist, N, sizeof(gene), cmpr);                                                           
+    qsort(genelist, N, sizeof(gene), &cmprHT2);
                                                                                                       
     /* update HT2 portion of fdrtbl */
     for(j=0;j<nFDRlist;j++){                                                                          
@@ -451,8 +449,7 @@ void SimMVN_IW(int *verb, int *fail, int *fncnt, int *grcnt, int *mask,
     }                                                                                                 
                                                                                                       
     /*---ShUT2---BLOCK--------------------------------------------------------------------------------*/
-    cmpr = &cmprShUT2;                                                                                
-    qsort(genelist, N, sizeof(gene), cmpr);
+    qsort(genelist, N, sizeof(gene), &cmprShUT2);
 
     /* update ShUT2 portion of fdrtbl */
     for(j=0;j<nFDRlist;j++){                                                                          
@@ -482,8 +479,7 @@ void SimMVN_IW(int *verb, int *fail, int *fncnt, int *grcnt, int *mask,
     }                                                                                                 
                                                                                                       
     /*---UT2---BLOCK----------------------------------------------------------------------------------*/
-    cmpr = &cmprUT2;                                                                                  
-    qsort(genelist, N, sizeof(gene), cmpr);                                                           
+    qsort(genelist, N, sizeof(gene), &cmprUT2);
                                                                                                       
     /* update UT2 portion of fdrtbl */
     for(j=0;j<nFDRlist;j++){                                                                          

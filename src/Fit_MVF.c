@@ -113,10 +113,10 @@ double loglik(int p, double *theta, void *yy)
   d2 = d*d;
   xd = (double) d;
 
-  Lambdahlf = (double *)S_alloc(d2, sizeof(double));
-  Lambda    = (double *)S_alloc(d2, sizeof(double));
-  xd2buff   = (double *)S_alloc(d2, sizeof(double));
-  SplL      = (double *)S_alloc(d2, sizeof(double));
+  Lambdahlf = (double *)Calloc(d2, double);
+  Lambda    = (double *)Calloc(d2, double);
+  xd2buff   = (double *)Calloc(d2, double);
+  SplL      = (double *)Calloc(d2, double);
 
   for(i=0;i<d2;i++) {
     *(Lambdahlf +i) = 0.0;
@@ -159,6 +159,11 @@ double loglik(int p, double *theta, void *yy)
     logl += logK + (xnreps-xd-2.0)/2.0 * log(u) + (nu-xd-1.0)/2.0 * log(v) - (xd+1.0)/2.0 * log(detSplL);
   }
 
+  Free(Lambdahlf);
+  Free(Lambda);
+  Free(xd2buff);
+  Free(SplL);
+
   return logl*(-1.0);
 }
 
@@ -187,21 +192,21 @@ void Gloglik(int inpar, double *theta, double *G, void *yy)
   d4 = d2*d2;
   xd = (double) d;
 
-  Lambdahlf     = (double *)S_alloc(       d2, sizeof(double)); /* d x d          */
-  Lambda        = (double *)S_alloc(       d2, sizeof(double)); /* d x d          */
-  Lambdainv     = (double *)S_alloc(       d2, sizeof(double)); /* d x d          */
-  xd2buff       = (double *)S_alloc(       d2, sizeof(double)); /* d x d          */
-  SplL          = (double *)S_alloc(       d2, sizeof(double)); /* d x d          */
-  SplLinv       = (double *)S_alloc(       d2, sizeof(double)); /* d x d          */
-  dvecBdtheta   = (double *)S_alloc(d2*nparm1, sizeof(double)); /* d^2 x (npar-1) */
-  dvecBprdtheta = (double *)S_alloc(d2*nparm1, sizeof(double)); /* d^2 x (npar-1) */
-  FactorII      = (double *)S_alloc(d2*nparm1, sizeof(double)); /* d^2 x (npar-1) */
-  Prod          = (double *)S_alloc(d2*nparm1, sizeof(double)); /* d^2 x (npar-1) */
-  IxBpr         = (double *)S_alloc(       d4, sizeof(double)); /* d^2 x d^2      */
-  BprxI         = (double *)S_alloc(       d4, sizeof(double)); /* d^2 x d^2      */
-  IxLi          = (double *)S_alloc(       d4, sizeof(double)); /* d^2 x d^2      */
-  IxSplLi       = (double *)S_alloc(       d4, sizeof(double)); /* d^2 x d^2      */
-  FactorI       = (double *)S_alloc(       d4, sizeof(double)); /* d^2 x d^2      */
+  Lambdahlf     = (double *)Calloc(       d2, double); /* d x d          */
+  Lambda        = (double *)Calloc(       d2, double); /* d x d          */
+  Lambdainv     = (double *)Calloc(       d2, double); /* d x d          */
+  xd2buff       = (double *)Calloc(       d2, double); /* d x d          */
+  SplL          = (double *)Calloc(       d2, double); /* d x d          */
+  SplLinv       = (double *)Calloc(       d2, double); /* d x d          */
+  dvecBdtheta   = (double *)Calloc(d2*nparm1, double); /* d^2 x (npar-1) */
+  dvecBprdtheta = (double *)Calloc(d2*nparm1, double); /* d^2 x (npar-1) */
+  FactorII      = (double *)Calloc(d2*nparm1, double); /* d^2 x (npar-1) */
+  Prod          = (double *)Calloc(d2*nparm1, double); /* d^2 x (npar-1) */
+  IxBpr         = (double *)Calloc(       d4, double); /* d^2 x d^2      */
+  BprxI         = (double *)Calloc(       d4, double); /* d^2 x d^2      */
+  IxLi          = (double *)Calloc(       d4, double); /* d^2 x d^2      */
+  IxSplLi       = (double *)Calloc(       d4, double); /* d^2 x d^2      */
+  FactorI       = (double *)Calloc(       d4, double); /* d^2 x d^2      */
 
   /* initialize some matrices to zero  */
   for(j=0;j<d2;j++) {
@@ -358,6 +363,22 @@ void Gloglik(int inpar, double *theta, double *G, void *yy)
          *(G + k + 1) += *(Prod + d2*k + (d*j + j)) * (-1.0);
   }
 
+  Free(Lambdahlf);
+  Free(Lambda);
+  Free(Lambdainv);
+  Free(xd2buff);
+  Free(SplL);
+  Free(SplLinv);
+  Free(dvecBdtheta);
+  Free(dvecBprdtheta);
+  Free(FactorII);
+  Free(Prod);
+  Free(IxBpr);
+  Free(BprxI);
+  Free(IxLi);
+  Free(IxSplLi);
+  Free(FactorI);
+
 }
 
 double lmgamma(double a, int m)
@@ -428,7 +449,7 @@ void tloglik(double *ptheta, double *MVM, int *pN, int *pd,
   Data *y;
   int inpar;
   int d, npar;
-  y = (Data *)S_alloc(1, sizeof(Data));
+  y = (Data *)Calloc(1, Data);
 
   y->MVM = MVM;
   y->pN = pN;
@@ -441,6 +462,8 @@ void tloglik(double *ptheta, double *MVM, int *pN, int *pd,
 
   *pans = loglik(inpar, ptheta, y);
 
+  Free(y);
+
 }
 
 void tGloglik(double *ptheta, double *MVM, int *pN, int *pd, 
@@ -450,7 +473,7 @@ void tGloglik(double *ptheta, double *MVM, int *pN, int *pd,
   int d, npar;
   int inpar;
 
-  y = (Data *)S_alloc(1, sizeof(Data));
+  y = (Data *)Calloc(1, Data);
 
   y->MVM = MVM;
   y->pN = pN;
@@ -461,6 +484,8 @@ void tGloglik(double *ptheta, double *MVM, int *pN, int *pd,
   inpar = (int) npar;
 
   Gloglik(inpar, ptheta, pG, y);
+
+  Free(y);
 
 }
 
@@ -473,7 +498,7 @@ void fHESS(double *x, Data *y, double *G, double *H, optimgr *grad)
   d = *(y->pd);
   npar = d*(d+1)/2 + 1;
   inpar = (int) npar;
-  G1 = (double *)S_alloc(npar, sizeof(double));
+  G1 = (double *)Calloc(npar, double);
   for (j=0;j<npar;j++) {
     temp=*(x+j);
     h=EPS*fabs(temp);
@@ -489,6 +514,8 @@ void fHESS(double *x, Data *y, double *G, double *H, optimgr *grad)
       *(H + npar*i + j) = *(H + npar*j + i);
     }
   }
+
+  Free(G1);
 
 }
 

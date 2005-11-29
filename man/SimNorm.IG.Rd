@@ -78,7 +78,7 @@ SimNorm.IG(nsim, shape = NULL, rate = NULL, theta = NULL, ngroups, nreps,
   SimResults <- 
     SimNorm.IG(nsim=500, theta=c(0.6605673, -3.2137414), Ngenes=12625,
                ngroups=2, nreps=3, FDRlist = 0.05*(1:5), effect.size = 
-               c(rep(4.33, 100), rep(0, 12625 - 100))
+               c(rep(4.33, 100), rep(0, 12625 - 100)))
           
 # Or create a batch file like this
 # contents of mysim.R:
