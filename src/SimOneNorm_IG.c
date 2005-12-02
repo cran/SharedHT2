@@ -45,9 +45,9 @@ void SimOneNorm_IG(double *shape, double *rate, int *pd, int *pnreps,
   mxnreps=0;
   for(l=0;l<N;l++) if(mxnreps < *(pnreps+l)) mxnreps = *(pnreps+l);
 
-  lbuff       = (int   *)Calloc(        1, int);
-  xbuff       = (double *)Calloc(        d, double);
-  Y           = (double *)Calloc(mxnreps*d, double);
+  lbuff       = (int   *)S_alloc(        1, sizeof(int));
+  xbuff       = (double *)S_alloc(        d, sizeof(double));
+  Y           = (double *)S_alloc(mxnreps*d, sizeof(double));
 
   GetRNGstate();
 
@@ -84,9 +84,5 @@ void SimOneNorm_IG(double *shape, double *rate, int *pd, int *pnreps,
     for(i=0;i<(nreps*d);i++) *(YY + mxnreps*d*l + i) = *(Y+i);
   }
   PutRNGstate();
-
-  Free(lbuff);
-  Free(xbuff);
-  Free(Y);
 
 }

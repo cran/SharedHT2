@@ -27,17 +27,17 @@ void SimOneMVN_IW(double *nu, double *Lbdinvhlf, int *pd, int *pnreps,
   mxnreps=0;
   for(l=0;l<N;l++) if(mxnreps < *(pnreps+l)) mxnreps = *(pnreps+l);
 
-  lbuff       = (int   *)Calloc(      1,int);
+  lbuff       = (int   *)S_alloc(      1,sizeof(int));
 
-  df          = (double *)Calloc(        1, double);
-  pW          = (double *)Calloc(       d2, double);
-  xbuff       = (double *)Calloc(        d, double);
-  SgmHlf      = (double *)Calloc(       d2, double);
-  Y           = (double *)Calloc(mxnreps*d, double);
-  Sigma       = (double *)Calloc(       d2, double);
-  SigInv      = (double *)Calloc(       d2, double);
-  LbdHlf      = (double *)Calloc(       d2, double);
-  sig         = (double *)Calloc(        d, double);
+  df          = (double *)S_alloc(        1, sizeof(double));
+  pW          = (double *)S_alloc(       d2, sizeof(double));
+  xbuff       = (double *)S_alloc(        d, sizeof(double));
+  SgmHlf      = (double *)S_alloc(       d2, sizeof(double));
+  Y           = (double *)S_alloc(mxnreps*d, sizeof(double));
+  Sigma       = (double *)S_alloc(       d2, sizeof(double));
+  SigInv      = (double *)S_alloc(       d2, sizeof(double));
+  LbdHlf      = (double *)S_alloc(       d2, sizeof(double));
+  sig         = (double *)S_alloc(        d, sizeof(double));
 
   /* NOTE:                                                                           */
   /* this block computes the average std dev over genes from the model               */
@@ -93,16 +93,5 @@ void SimOneMVN_IW(double *nu, double *Lbdinvhlf, int *pd, int *pnreps,
     for(i=0;i<(nreps*d);i++) *(YY + mxnreps*d*l + i) = *(Y+i);
   }
   PutRNGstate();
-
-  Free(lbuff);
-  Free(df);
-  Free(pW);
-  Free(xbuff);
-  Free(SgmHlf);
-  Free(Y);
-  Free(Sigma);
-  Free(SigInv);
-  Free(LbdHlf);
-  Free(sig);
 
 }
