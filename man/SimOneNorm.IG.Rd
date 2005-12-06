@@ -43,6 +43,7 @@ SimOneNorm.IG(shape = NULL, rate = NULL, theta = NULL, ngroups, nreps, Ngenes,
 }
 
 \examples{
+\dontrun{
   shape <- 1.93589032
   rate <- 0.04020591
   Ngenes <- 12625
@@ -68,5 +69,5 @@ SimOneNorm.IG(shape = NULL, rate = NULL, theta = NULL, ngroups, nreps, Ngenes,
   TopGenes(fit.MyDat, FDR=0.05, allsig=TRUE)
 
 }
-
+}
 \keyword{datagen}
