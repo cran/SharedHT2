@@ -43,6 +43,7 @@ SimOneMVN.IW(shape = NULL, rate = NULL, theta = NULL, nreps, Ngenes,
 }
 
 \examples{
+\dontrun{
   shape <- 9.107182
   rate <- matrix(c(0.12789434, 0.08468535, 0.08468535, 0.12390469), 2, 2)
   Ngenes <- 12625
@@ -64,7 +65,7 @@ SimOneMVN.IW(shape = NULL, rate = NULL, theta = NULL, nreps, Ngenes,
 # View the sorted genelist
 
   TopGenes(fit.MyDat, FDR=0.05, allsig=TRUE)
-
+}
 }
 
 \keyword{datagen}
