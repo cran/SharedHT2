@@ -4,6 +4,5 @@ export(EB.Anova, EBfit, TopGenes, SimNorm.IG, SimMVN.IW, SimMVN.mxIW,
        shape.rate, shape.rate.inv, means.var, "%,%", ShHT2News)
 S3method(print, fit.n.data)
 S3method(summary, fit.n.data)
-S3method(update, fit.n.data)
 S3method(print, EBfit)
 S3method(as.data.frame, fit.n.data)

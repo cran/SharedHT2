@@ -4,7 +4,7 @@
 \description{
   \code{SimOneMVN.IW} generates a single simulated micro-array expression 
   experiment under the Multivariate Normal/Inverse Wishart model. This can be used
-  to generate a variety of example datasets.}
+  to generate a variety of example datasets.
 }
 \usage{
 SimOneMVN.IW(shape = NULL, rate = NULL, theta = NULL, nreps, Ngenes, 
@@ -31,7 +31,7 @@ SimOneMVN.IW(shape = NULL, rate = NULL, theta = NULL, nreps, Ngenes,
 \value{
   A dataframe having \code{Ngenes} rows and \code{nreps * d} columns where \code{d}
   is implicit in the dimension of Lambda, (see above).  See the documentation for
-  \code{SimAffyDat} for more details.}
+  \code{SimAffyDat} for more details.
 }
 
 \author{Grant Izmirlian \email{izmirlian@nih.gov}}

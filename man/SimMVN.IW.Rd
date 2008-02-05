@@ -7,7 +7,7 @@
   Inverse Wishart model for the purposes of benchmarking the empirical Bayes 
   Hotelling T-squared test against three other statistics, the standard
   Hotelling T-squared test, the empirical Bayes univariate F test and the
-  standard univariate F test.}
+  standard univariate F test.
 }
 \usage{
 SimMVN.IW(nsim, shape = NULL, rate = NULL, theta = NULL, nreps, 

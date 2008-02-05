@@ -46,9 +46,11 @@ function(data, labels, H0 = "equal.means", Var.Struct = "general",
  
   m$Var.Struct <- NULL
   ans <- eval(m)
-  if(!fit.only) 
+  ans$call <- .call.
+
+  if(!fit.only)
     ans$EBfit$call <- .call.
-  else ans$call <- .call.
+  
   ans
 } 
 
@@ -148,13 +150,7 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
     d <- 1
   }
   if(H0 == "user") {
-    if(sum(abs(M - M%*%M)) > 1e-8)
-      stop("User supplied contrasts matrix must be indempotent")
     rnk <- qr(M)$rank
-    if(rnk < p) {
-      b.5 <- chol(M)
-      M <- b.5[-(rnk+1):p]
-    }
     d <- rnk
   }
   if(verbose) {
@@ -194,7 +190,7 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
   }
   theta <- fit$estimate
   V.theta <- solve(matrix(fit$H,npar,npar))
-  nu <- (2*d + 2)*(exp(theta[1])+1)
+  nu <- 2*d*(exp(theta[1])+1)
   if(d > 1) {
     Lambda.5 <- matrix(0, d, d)
     diag(Lambda.5) <- exp(theta[2:(1 + d)])
@@ -318,9 +314,35 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
                       "the function value for details.\n")
   }
 
-  mu.g <- matrix(NA, N, p)
-  S <- rep(0, N)
-  for(i in 1:p) {
+  if(H0 == "zero.means") {
+    d <- p
+    M <- diag(p)
+  }
+  if(H0 == "equal.means") {
+    b <- diag(p) - 1/p * matrix(1, p, p)
+    b.5 <- chol(b)
+    b.5 <- b.5[ - p,  ]
+    d <- p - 1
+    M <- rbind(b.5)
+  }
+  if(H0 == "no.trend") {
+    x <- cbind(rep(1, p), (1:p))
+    PI <- solve(t(x) %*% x) %*% t(x)
+    d <- 1
+    M <- PI[2,  , drop = F]
+  }
+  if(H0 == "user") {
+    rnk <- qr(M)$rank
+    d <- rnk
+  }
+
+  Y.new <- matrix(0, N, n*d)
+  for(i in 1:n) Y.new[,n*(0:(d-1)) + i] <- Y[,n*(0:(p-1)) + i] %*% t(M)
+  Y <- Y.new
+  
+  mu.g <- matrix(NA, N, d)
+  S <- rep(0, N)  
+  for(i in 1:d) {
     mu.g[, i] <- rowMeans(Y[, n * (i - 1) + (1:n)], na.rm = T)
     Z.i <- Y[, n * (i - 1) + (1:n)] - mu.g[, i]
     S <- S + rowMeans(Z.i^2, na.rm = T)*nreps
@@ -332,7 +354,7 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
             ptheta0 = as.double(theta0),
             S = as.double(S),
             pN = as.integer(N),
-            pd = as.integer(p),
+            pd = as.integer(d),
             pnreps = as.integer(nreps),
             pverbose = as.integer(verbose),
             objval = as.double(0),
@@ -356,42 +378,12 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
   s <- eth[1]
   r <- eth[2]
   if(!fit.only){
-    if(H0 == "zero.means") {
-      d <- p
-      M <- diag(p)
-    }
-    if(H0 == "equal.means") {
-      b <- diag(p) - 1/p * matrix(1, p, p)
-      b.5 <- chol(b)
-      b.5 <- b.5[ - p,  ]
-      d <- p - 1
-      M <- rbind(b.5)
-    }
-    if(H0 == "no.trend") {
-      x <- cbind(rep(1, p), (1:p))
-      PI <- solve(t(x) %*% x) %*% t(x)
-      d <- 1
-      M <- PI[2,  , drop = F]
-    }
-
-    if(H0 == "user") {
-      if(sum(abs(M - M%*%M)) > 1e-8)
-        stop("User supplied contrasts matrix must be indempotent")
-      rnk <- qr(M)$rank
-      if(rnk < p) {
-        b.5 <- chol(M)
-        M <- b.5[-(rnk+1):p]
-      }
-      d <- rnk
-    }
-
-    Ybar <- matrix(mu.g %*% t(M), N, d)
+    Ybar <- mu.g
     Top <- nreps*((Ybar*Ybar)%*%rep(1,d))
-
-    ShUT2.stat <- Top/(2*r + S)*(2*s + p*(nreps - 1))/d
-    ShUT2.pval <- 1-pf(ShUT2.stat, d, 2*s + p*(nreps - 1))
-    UT2.stat <- Top/S*p*(nreps-1)/d
-    UT2.pval <- 1-pf(UT2.stat, d, p*(nreps-1))
+    ShUT2.stat <- Top/(2*r + S)*(2*s + d*(nreps - 1))/d
+    ShUT2.pval <- 1-pf(ShUT2.stat, d, 2*s + d*(nreps - 1))
+    UT2.stat <- Top/S*(nreps-1)
+    UT2.pval <- 1-pf(UT2.stat, d, d*(nreps-1))
     ans <- list()
     ans$data <- as.data.frame(list(GeneId = id, ShUT2.stat = ShUT2.stat,
                               ShUT2.pval = ShUT2.pval, UT2.stat = UT2.stat,
@@ -432,109 +424,237 @@ function(data, labels, H0 = "equal.means", M = NULL, verbose = TRUE, subset,
   ans
 }
 
-"TopGenes" <- 
-function (obj, by = "EB", ref = 1, FDR = 0.05, allsig = FALSE, n.g = 20, 
-          browse = FALSE, search.url = genecards, path = "", file = "") 
+"TopGenes" <-
+function (obj, by = "EB", FDR = 0.05, allsig = FALSE, n.g = 20, 
+    browse = FALSE, search.url = genecards, subset.contrasts = NULL, 
+    subset.cols.sig = NULL, on.alpha = NULL, off.alpha = NULL, 
+    fold.change = NULL, out.values = c("mean", "tstat", "both"), 
+    path = "", file = "") 
 {
-  if(class(obj)!="fit.n.data")
-    stop("TopGenes expects an argument of class 'fit.n.data' which is returned by EB.Anova\n" %,%
-         "make sure the argument 'fit.only' is set to FALSE (default)")
-  if(by != "EB" && by != "naive")
-    stop("Argument 'by' must be set to either \"EB\" (Empirical Bayes) or \"naive\"")
-  fit <- obj$EBfit
-  m <- obj.call <- fit$call
-  this.call <- match.call()
-  obj <- obj$data
-  nosiggenes <- F
-  N <- dim(obj)[1]
-  stepwise <- (FDR * (1:N))/N
-  m$id <- NULL
-  labs <- eval(m$labels)
-  labs <- substring(labs, 5, nchar(labs))
-  m[[1]] <- as.name("means.var")
-  m$theta0 <- m$gradient <- NULL
-  m <- eval(m, sys.parent())
-  mu <- m$mean
-  id <- as.character(obj$GeneId)
-  stat.names <- fit$stat.names
-  stat.idx <- which(names(obj) == stat.names[by] %,% ".stat")
-  p.idx <- which(names(obj) == stat.names[by] %,% ".pval")
-  indx <- order(-obj[, stat.idx])
-  position <- (1:N)[indx]
-  if (allsig) {
-    sig.inds <- obj[, p.idx][indx] <= stepwise
-    if(sum(sig.inds)==0) n.g <- 0
-    else n.g <- max(which(obj[, p.idx][indx] <= stepwise))
-  }
-  if (n.g == 0) 
-    nosiggenes <- T
-  if (!nosiggenes) {
-    position <- position[1:n.g]
-    g <- id[indx[1:n.g]]
-    mu <- mu[indx[1:n.g], ]
-    T2 <- obj[, stat.idx][indx[1:n.g]]
-    pval <- obj[, p.idx][indx[1:n.g]]
-  }
-  p <- dim(rbind(mu))[2]
-  p. <- switch(missing(ref) + 1, 2 * p + 3, 4 + p)
-  if (!nosiggenes) {
-    stepwise <- stepwise[1:n.g]
-    ans <- cbind(1:length(g), 1:length(g), rbind(signif(2^mu, 3)))
-    if (!missing(ref)) {
-      mu <- rbind(mu)
-      ratio <- signif(2^(mu[, -ref, drop = F] - mu[, ref]), 3)
-      ans  <- cbind(ans, signif(ratio, 3), signif(T2, 3), signif(pval, 4),
-                    signif(stepwise, 4))
+    this.call <- match.call()
+    if (missing(out.values)) 
+        out.values <- "mean"
+    if (class(obj) != "fit.n.data") 
+        stop("TopGenes expects an argument of class 'fit.n.data' which is returned by EB.Anova\n" %,% 
+            "make sure the argument 'fit.only' is set to FALSE (default)")
+    if (by != "EB" && by != "naive") 
+        stop("Argument 'by' must be set to either \"EB\" (Empirical Bayes) or \"naive\"")
+    fit <- obj$EBfit
+    mf <- obj.call <- obj$call
+    obj <- obj$data
+    m <- length(fit$coef)
+    d <- ((8 * (m - 1) + 1)^0.5 - 1)/2
+    is.subset.cols.sig <- !missing(subset.cols.sig)
+    is.subset.contrasts <- !missing(subset.contrasts)
+    is.fold.change <- !missing(fold.change)
+    is.on.alpha <- !missing(on.alpha)
+    is.off.alpha <- !missing(off.alpha)
+    if (!is.fold.change) 
+        fold.change <- 1
+    subset.on.fold.change <- is.fold.change && is.subset.cols.sig
+    subset.on.nested.T2s <- (is.on.alpha || is.off.alpha) && 
+        ((is.subset.cols.sig && sum(abs(subset.cols.sig) > 0)) || 
+            (is.subset.cols.sig && is.subset.contrasts))
+    out.values.choice <- grep(out.values, c("mean", "tstat", 
+        "both"))
+    if (length(out.values.choice) == 0) 
+        stop("Argument 'out.values' must be one of \"mean\",\"tstat\", or \"both\"")
+    compute.nested.Ts <- subset.on.nested.T2s || (out.values.choice > 
+        1)
+    if (is.subset.cols.sig) 
+        m.scs <- length(subset.cols.sig)
+    if (is.subset.contrasts) 
+        d.sc <- dim(subset.contrasts)
+    if (!is.subset.contrasts) 
+        d.sc <- c(d, d)
+    if (!is.subset.cols.sig) 
+        m.scs <- d
+    if (d.sc[2] != d || m.scs != d.sc[1]) 
+        stop("Arguments 'subset.contrasts' and 'subset.cols.sig' must be a matrix and " %,% 
+            "a vector, respectively, where the matrix has leading dimension equal to the " %,% 
+            "vector, and number of columns equal to the original dimension of the problem.")
+    if (browse) {
+        cmd <- as.call(expression(require))
+        an.nm <- attr(eval(obj.call$data), "annotation")
+        if (!is.null(an.nm)) {
+            require(affy)
+            cmd$package <- as.name(an.nm)
+            eval(cmd, sys.parent())
+        }
     }
-    else 
-      ans <- cbind(ans, signif(T2, 3), signif(pval, 4), signif(stepwise, 4))
-    msg <- ifelse(allsig,
-                  "B-H FDR procedure detects " %,% n.g %,% " " %,%
-                  "significant genes at FDR=" %,% FDR %,% ":\n",
-                  "Top " %,% n.g %,% " Genes: \n")
-  }
-  else {
-    ans <- rbind(rep(NA, p.))
-    g <- NA
-    position <- "<NA>"
-    msg <- "B-H FDR procedure detects no significant genes at FDR=" %,% FDR %,% ".\n"
-  }
-  ans <- as.data.frame(ans)
-  ans[[1]] <- position
-  ans[[2]] <- g
-  if (!missing(ref)) {
-    labs.ind <- (1:2) * (ref == 1) + (2:1) * (ref == 2)
-    if (ref == 1) 
-      labs.ind <- 1:p
-    if (ref == 2) 
-      labs.ind <- c(2, 1, 3:p)
-    if (ref > 2 && ref < p) 
-      labs.ind <- c(ref, unique(1:(ref - 1)), unique((ref + 1):p))
-    if (ref == p) 
-      labs.ind <- c(p, unique(1:(p - 1)))
-    nms <- c("RowNum", "GeneId", labs, labs[labs.ind[-1]] %,% 
-             "/" %,% labs[labs.ind[1]], stat.names[by] %,% ".stat",
-             stat.names[by] %,% ".p-val", "FDR.stepdown=" %,% FDR)
-  }
-  else nms <- c("RowNum", "GeneId", labs, stat.names[by] %,% ".stat",
-                stat.names[by] %,% ".p-val", "FDR.stepdown=" %,% FDR)
-  names(ans) <- nms
-  if (browse) {
-    cmd <- as.call(expression(htmtbl))
-    cmd$x <- as.name("ans")
-    if (!missing(file)) 
-      cmd$file <- file
-    if (!missing(path)) 
-      cmd$path <- path
-    cmd$search.url <- search.url
-    cmd$id <- as.name("GeneId")
-    eval(as.call(cmd))
-    cat("Genelist linked to the \"GeneCards\" database loading in " %,%
-        getOption("browser") %,% "...\n")
-  }
-  cat(msg)
-  ans
+    nosiggenes <- FALSE
+    N <- dim(obj)[1]
+    stepwise <- (FDR * (1:N))/N
+    mf$id <- NULL
+    mf[[1]] <- as.name("means.var")
+    mf$theta0 <- mf$gradient <- NULL
+    mf <- eval(mf, sys.parent())
+    mu <- mf$mean
+    contrast.names <- dimnames(mu)[[2]]
+    SIG <- mf$var
+    id <- as.character(obj$GeneId)
+    stat.names <- fit$stat.names
+    stat.idx <- which(names(obj) == stat.names[by] %,% ".stat")
+    p.idx <- which(names(obj) == stat.names[by] %,% ".pval")
+    indx <- order(-obj[, stat.idx])
+    position <- (1:N)[indx]
+    ranks <- 1:N
+    d.out <- 4 + m.scs
+    if (allsig) {
+        sig.inds <- obj[, p.idx][indx] <= stepwise
+        if (sum(sig.inds) == 0) 
+            n.g <- 0
+        else n.g <- max(which(obj[, p.idx][indx] <= stepwise))
+    }
+    if (n.g == 0) 
+        nosiggenes <- TRUE
+    if (!nosiggenes) {
+        position <- position[1:n.g]
+        ranks <- ranks[1:n.g]
+        g <- id[indx[1:n.g]]
+        mu <- mu[indx[1:n.g], ]
+        SIG <- SIG[indx[1:n.g], ]
+        T2 <- obj[, stat.idx][indx[1:n.g]]
+        pval <- obj[, p.idx][indx[1:n.g]]
+        stepwise <- stepwise[1:n.g]
+        if (compute.nested.Ts) {
+            L <- fit$rate
+            L <- t(matrix(L, d^2, n.g))
+            nu <- fit$shape
+            d.nms <- names(eval(obj.call$data))
+            lbls <- eval(obj.call$labels)
+            n <- length(grep(lbls[1], d.nms))
+            V.post <- ((n - 1) * SIG + L)/(nu - (2 * d + 2) + 
+                n - 1)
+            if (is.subset.contrasts) {
+                mu <- mu %*% t(subset.contrasts)
+                V.post <- t((subset.contrasts %K% diag(m.scs)) %*% 
+                  ((diag(d) %K% subset.contrasts) %*% t(V.post)))
+                contrast.names <- "contrast" %,% (1:m.scs)
+            }
+            SE.post <- (V.post[, m.scs * (0:(m.scs - 1)) + (1:m.scs)])^0.5
+            T.nested <- mu/SE.post
+        }
+        cond <- rep(TRUE, n.g)
+        if (subset.on.nested.T2s) {
+            T2.nested <- T.nested^2
+            off.genes <- which(subset.cols.sig < 0)
+            on.genes <- which(subset.cols.sig > 0)
+            z.off <- qnorm(1 - off.alpha/2)
+            z.on <- qnorm(1 - on.alpha/2)
+            m.off.genes <- length(off.genes)
+            m.on.genes <- length(on.genes)
+            cond.off <- rep(TRUE, n.g)
+            cond.on <- rep(FALSE, n.g)
+            if (m.off.genes > 0) 
+                for (ioff in off.genes) cond.off <- cond.off & 
+                  (T2.nested[, ioff] < z.off^2)
+            if (m.on.genes > 0) 
+                for (ion in on.genes) cond.on <- cond.on | (T2.nested[, 
+                  ion] > z.on)
+            cond <- cond.off & cond.on
+        }
+        if (subset.on.fold.change) {
+            off.genes <- which(subset.cols.sig < 0)
+            on.genes <- which(subset.cols.sig > 0)
+            m.off.genes <- length(off.genes)
+            m.on.genes <- length(on.genes)
+            cond.off <- rep(TRUE, n.g)
+            cond.on <- rep(FALSE, n.g)
+            if (m.off.genes > 0) 
+                for (ioff in off.genes) cond.off <- cond.off & 
+                  (2^abs(mu[, ioff]) < fold.change)
+            if (m.on.genes > 0) 
+                for (ion in on.genes) cond.on <- cond.on | (2^abs(mu[, 
+                  ion]) > fold.change)
+            cond <- cond & cond.off & cond.on
+        }
+        out.vals <- switch(out.values.choice, rbind(signif(2^mu, 
+            3)), rbind(signif(T.nested, 3)), matrix(aperm(array(rbind(cbind(signif(2^mu, 
+            3), signif(T.nested, 3))), c(n.g, m.scs, 2)), c(1, 
+            3, 2)), n.g, 2 * m.scs))
+        out.val.nms <- switch(out.values.choice, contrast.names, 
+            contrast.names, c(t(matrix(c(contrast.names, "T-" %,% 
+                contrast.names), m.scs, 2))))
+        ans <- cbind(1:length(g), 1:length(g), 1:length(g), out.vals, 
+            signif(T2, 3), signif(pval, 4), signif(stepwise, 
+                4))
+        if (subset.on.nested.T2s | subset.on.fold.change) {
+            if (sum(cond) > 0) {
+                ans <- ans[cond, , drop = FALSE]
+                g <- g[cond]
+                position <- position[cond]
+                ranks <- ranks[cond]
+            }
+            else {
+                ans <- rbind(rep(NA, 6 + length(out.val.nms)))
+                g <- NA
+                position <- "<NA>"
+                ranks <- "<NA>"
+                msg <- "B-H FDR procedure detects no significant genes at FDR=" %,% 
+                  FDR %,% ".\n"
+                nosiggenes <- TRUE
+            }
+        }
+        d.ans <- dim(ans)
+        filtering.choice <- 1 * (!subset.on.nested.T2s && !subset.on.fold.change) + 
+            2 * (subset.on.nested.T2s && !subset.on.fold.change) + 
+            3 * (!subset.on.nested.T2s && subset.on.fold.change) + 
+            4 * (subset.on.nested.T2s && subset.on.fold.change)
+        filtering.choice.txt <- c("Nested T statistic", "Fold Change", 
+            "Nested T statistic and Fold Change")[filtering.choice - 
+            1]
+        filtering.msg <- "\n"
+        if (filtering.choice > 1) 
+            filtering.msg <- "Filtering on " %,% filtering.choice.txt %,% 
+                "resulted in " %,% sum(cond) %,% " genes\n"
+        dimnames(ans) <- list(1:d.ans[1], 1:d.ans[2])
+        msg <- ifelse(allsig, "B-H FDR procedure detects " %,% 
+            n.g %,% " " %,% "significant genes at FDR=" %,% FDR %,% 
+            ":\n" %,% filtering.msg, "Top " %,% n.g %,% " Genes: \n")
+    }
+    else {
+        ans <- rbind(rep(NA, d.out))
+        g <- NA
+        position <- "<NA>"
+        ranks <- "<NA>"
+        msg <- "B-H FDR procedure detects no significant genes at FDR=" %,% 
+            FDR %,% ".\n"
+    }
+    ans <- as.data.frame(ans)
+    ans[[1]] <- ranks
+    ans[[2]] <- position
+    ans[[3]] <- g
+    nms <- c("Rank", "RowNum", "GeneId", out.val.nms, stat.names[by] %,% 
+        ".stat", stat.names[by] %,% ".p-val", "FDR.stepdown=" %,% 
+        FDR)
+    names(ans) <- nms
+    if (browse) {
+        cmd <- as.call(expression(htmtbl))
+        cmd$x <- as.name("ans")
+        if (!missing(file)) 
+            cmd$file <- file
+        if (!missing(path)) 
+            cmd$path <- path
+        cmd$search.url <- search.url
+        cmd$id <- as.name("GeneId")
+        if (!is.null(an.nm)) {
+            fffcmd <- "function(x)get(x," %,% an.nm %,% "GENENAME)"
+            fff <- eval(parse(text = fffcmd), sys.parent())
+            if (!nosiggenes) {
+                gene.names <- sapply(ans$GeneId, FUN = fff)
+                cmd$rownames <- gene.names
+            }
+        }
+        eval(cmd)
+        cat("Genelist linked to the \"GeneCards\" database loading in " %,% 
+            getOption("browser") %,% "...\n")
+    }
+    cat(msg)
+    out <- list(table = ans, call = this.call, msg = msg)
+    out
 }
+
 
 "shape.rate" <- 
 function(object)
@@ -551,7 +671,7 @@ function(object)
   d <- ((8*(p-1)+1)^0.5-1)/2
   if(floor(d)!=d)
     stop("numeric argument not of appropriate length")
-  nu <- (2*d + 2)*(exp(theta[1])+1)
+  nu <- 2*d*(exp(theta[1])+1)
   L.5 <- matrix(0, d, d)
   diag(L.5) <- exp(theta[2:(d+1)])
   L.5[outer(1:d,1:d,FUN="<")] <- theta[-(1:(d+1))]
@@ -581,7 +701,7 @@ function(object)
 
   d <- dim(rate)[1]
   shape <- object[[1]]
-  th1 <- log(shape/(2*d + 2) - 1)
+  th1 <- log(shape/(2*d) - 1)
 
   ind.upr.dg <- outer(1:d, 1:d, FUN = "<")
   ans <- c(th1, log(diag(rate.5)), rate.5[ind.upr.dg])
@@ -668,7 +788,7 @@ function(theta, MVM, nreps)
 "genecards" <- "http://thr.cit.nih.gov/cgi-bin/cards/cardsearch.pl?search="
 
 "htmtbl" <- 
-function(x, path = "", file = "", main = "", id = NULL, search.url = NULL,
+function(x, path = "", file = "", main = "", id = NULL, rownames = NULL, search.url = NULL,
          browser = getOption("browser"))
 {
 	call. <- match.call()
@@ -677,7 +797,7 @@ function(x, path = "", file = "", main = "", id = NULL, search.url = NULL,
 	if(!is.null(id.nm))
 		id.idx <- grep(id.nm, names(x))
 	if(file == "") {
-		file <- tempfile("temp")
+		file <- tempfile("temp") %,% ".html"
 	}
 	else {
 		if(path == "")
@@ -705,12 +825,21 @@ function(x, path = "", file = "", main = "", id = NULL, search.url = NULL,
 			dimnames(x) <- dimnames.x
 		}
 	}
-	if(!missing(search.url) && !missing(id)) {
+	if(!missing(search.url) && !missing(id) && missing(rownames)) {
 		fff <- function(x, search.url)
 		{
 			"<a href=" %,% search.url %,% x %,% "> " %,% x
 		}
 		x[, id.idx] <- sapply(id.vals, FUN = fff, search.url = 
+			search.url)
+	}
+	if(!missing(search.url) && !missing(id) && !missing(rownames)) {
+		fff <- function(x, search.url)
+		{
+			"<a href=" %,% search.url %,% x[2] %,% "> <div title=\"" %,%
+                          x[1] %,% "\">" %,% x[2] %,% "</div>"
+		}
+		x[, id.idx] <- apply(cbind(rownames, id.vals), 1, FUN = fff, search.url = 
 			search.url)
 	}
 	out <- c(out, paste(collapse = " ", "<TABLE", paste(collapse = " ",
@@ -741,87 +870,130 @@ function(x, path = "", file = "", main = "", id = NULL, search.url = NULL,
 }
 
 "means.var" <- 
-function(data, labels, subset, H0=NULL, Var.Struct=NULL, na.action=na.pass)
+function (data, labels, subset, H0 = NULL, Var.Struct = NULL, 
+    na.action = na.pass) 
 {
-  nms <- names(data)
-  m <- call. <- match.call()
-  m[[1]] <- as.name("model.frame")
-  idx <- c(sapply(labels,FUN=grep, nms))
-  form <- make.form("", nms[idx])
-  m$formula <- form
-  m$labels <- m$H0 <- m$Var.Struct <- NULL
-  m <- eval(m, sys.parent())
-
-  id <- dimnames(m)[[1]]
-  gnum <- dim(m)[1]
-  clnum <- length(labels)
-  N <- gnum
-  p <- clnum
-  n <- length(grep(labels[1], nms))
-
-  Terms <- attr(m, "terms")
-  Y <- model.matrix(Terms, m)[, -1, drop = F]
-
-  # Balancing the data
-  balcd.rows <- rep(FALSE, N)
-  tr.ind <- c(outer(n*(0:(p-1)), 1:n, FUN="+"))
-  tr.tr.ind <- c(outer(p*(0:(n-1)), 1:p, FUN="+"))
-  Y.tr <- Y[, tr.ind]
-  balcd.repls <- matrix(0, N, n)
-  for(i in 1:n){
-    balcd.repl.i <- c(apply(Y.tr[, p*(i-1) + (1:p)], 1, FUN=function(x)any(is.na(x))))
-    Y.tr[, p*(i-1) + (1:p)] <- Y.tr[, p*(i-1) + (1:p)]*(c(1, NA)[1+1*balcd.repl.i])
-    balcd.repls[,i] <- balcd.repl.i
-    balcd.rows <- balcd.rows | balcd.repl.i
-  }
-  Y <- Y.tr[,tr.tr.ind]
-  balcd.rows <- which(balcd.rows)
-  N.balcd.rows <- length(balcd.rows)
-  nreps <- apply(Y[, 1:n], 1, FUN=function(x)sum(!is.na(x)))
-
-  if(missing(H0)) H0 <- ""
-  if(missing(Var.Struct)) Var.Struct <- ""
-  vs <- charmatch(Var.Struct, c("simple", "general"), 0)
-  h0 <- charmatch(H0, c("no.trend","equal.means","zero.means"), 0)
-  if((h0==3 && vs==2) || h0==0 || vs == 0) not.enough <- nreps <= p
-  if(h0==2 && vs==2) not.enough <- nreps <= (p-1)
-  if(h0==1 || vs==1) not.enough <- nreps < 2
-  if(H0=="user" && vs==2) not.enough <- nreps <= qr(M)$rank
-
-  drop.inds <- which(not.enough)
-  N.dr <- length(drop.inds)
-  if(N.dr>0){
-    N <- N - N.dr
-    nreps <- nreps[-drop.inds]
-    id <- id[-drop.inds]
-    Y <- Y[-drop.inds,]
-  }
-  if(N.balcd.rows > 0) {
-      msg1 <- strwrap("Balanced the data by removing all elements of a replicate containing " %,% 
-                      "one or more missing group observations in " %,% N.balcd.rows %,% " " %,%
-                      "rows.  See the component 'balanced.rows' in the function value " %,% 
-                      "for details.")
-  }
-  if(N.dr > 0) {
-      msg2 <- strwrap("Dropped " %,% N.dr %,% " rows due sample size less than " %,%
-                      "rank(Contrasts).  See the component 'dropped.rows' in " %,%
-                      "the function value for details.\n")
-  }
-
-  mu.g <- matrix(NA, N, p)
-  var.g <- matrix(NA, N, p^2)
-
-  for(i in 1:p) {
-    mu.g[, i] <- rowMeans(Y[, n * (i - 1) + (1:n)], na.rm = T)
-    for(j in unique(1:i)) {
-      Z.i <- Y[, n * (i - 1) + (1:n)] - mu.g[, i]
-      Z.j <- Y[, n * (j - 1) + (1:n)] - mu.g[, j]
-      var.g[, p * (i - 1) + j] <- var.g[, p * (j - 1) + i] <-
-        n/(n - 1) * rowMeans(Z.i * Z.j, na.rm = T)
+    nms <- names(data)
+    m <- call. <- match.call()
+    m[[1]] <- as.name("model.frame")
+    idx <- c(sapply(labels, FUN = grep, nms))
+    form <- make.form("", nms[idx])
+    m$formula <- form
+    m$labels <- m$H0 <- m$Var.Struct <- NULL
+    m <- eval(m, sys.parent())
+    id <- dimnames(m)[[1]]
+    gnum <- dim(m)[1]
+    clnum <- length(labels)
+    N <- gnum
+    p <- clnum
+    n <- length(grep(labels[1], nms))
+    Terms <- attr(m, "terms")
+    Y <- model.matrix(Terms, m)[, -1, drop = F]
+    balcd.rows <- rep(FALSE, N)
+    tr.ind <- c(outer(n * (0:(p - 1)), 1:n, FUN = "+"))
+    tr.tr.ind <- c(outer(p * (0:(n - 1)), 1:p, FUN = "+"))
+    Y.tr <- Y[, tr.ind]
+    balcd.repls <- matrix(0, N, n)
+    for (i in 1:n) {
+        balcd.repl.i <- c(apply(Y.tr[, p * (i - 1) + (1:p)], 
+            1, FUN = function(x) any(is.na(x))))
+        Y.tr[, p * (i - 1) + (1:p)] <- Y.tr[, p * (i - 1) + (1:p)] * 
+            (c(1, NA)[1 + 1 * balcd.repl.i])
+        balcd.repls[, i] <- balcd.repl.i
+        balcd.rows <- balcd.rows | balcd.repl.i
     }
-  }
-  list(mean = mu.g, var = var.g)
+    Y <- Y.tr[, tr.tr.ind]
+    balcd.rows <- which(balcd.rows)
+    N.balcd.rows <- length(balcd.rows)
+    nreps <- apply(Y[, 1:n], 1, FUN = function(x) sum(!is.na(x)))
+    if (missing(H0)) 
+        H0 <- "zero.means"
+    if (is.numeric(H0)) {
+        M <- rbind(H0)
+        H0 <- "user"
+        r <- qr(M)$rank
+        d.M <- dim(M)
+        if (d.M[2] != p | r > p) 
+            stop("User supplied contrast matrix must be of dimension " %,% 
+                "q x (#groups) where q <= (#groups) and of rank <= (#groups)")
+    }
+    if (missing(Var.Struct)) 
+        Var.Struct <- ""
+    vs <- charmatch(Var.Struct, c("simple", "general"), 0)
+    h0 <- charmatch(H0, c("no.trend", "equal.means", "zero.means"), 
+        0)
+    if ((h0 == 3 && vs == 2) || h0 == 0 || vs == 0) 
+        not.enough <- nreps <= p
+    if (h0 == 2 && vs == 2) 
+        not.enough <- nreps <= (p - 1)
+    if (h0 == 1 || vs == 1) 
+        not.enough <- nreps < 2
+    if (H0 == "user" && vs == 2) 
+        not.enough <- nreps <= qr(M)$rank
+    drop.inds <- which(not.enough)
+    N.dr <- length(drop.inds)
+    if (N.dr > 0) {
+        N <- N - N.dr
+        nreps <- nreps[-drop.inds]
+        id <- id[-drop.inds]
+        Y <- Y[-drop.inds, ]
+    }
+    if (N.balcd.rows > 0) {
+        msg1 <- strwrap("Balanced the data by removing all elements of a replicate containing " %,% 
+            "one or more missing group observations in " %,% 
+            N.balcd.rows %,% " " %,% "rows.  See the component 'balanced.rows' in the function value " %,% 
+            "for details.")
+    }
+    if (N.dr > 0) {
+        msg2 <- strwrap("Dropped " %,% N.dr %,% " rows due sample size less than " %,% 
+            "rank(Contrasts).  See the component 'dropped.rows' in " %,% 
+            "the function value for details.\n")
+    }
+    if (H0 == "zero.means") {
+        d <- p
+        M <- diag(p)
+        dimnames(M) <- list(labels, labels)
+    }
+    if (H0 == "equal.means") {
+        b <- diag(p) - 1/p * matrix(1, p, p)
+        b.5 <- chol(b)
+        b.5 <- b.5[-p, ]
+        d <- p - 1
+        M <- rbind(b.5)
+        dimnames(M) <- list("eq.means" %,% (1:d), labels)
+    }
+    if (H0 == "no.trend") {
+        x <- cbind(rep(1, p), (1:p))
+        PI <- solve(t(x) %*% x) %*% t(x)
+        d <- 1
+        M <- PI[2, , drop = F]
+        dimnames(M) <- list("slope", labels)
+    }
+    if (H0 == "user") {
+        rnk <- qr(M)$rank
+        d <- rnk
+        if (is.null(dimnames(M))) 
+            dimnames(M) <- list("contrast" %,% (1:d), labels)
+    }
+    Y.new <- matrix(0, N, n * d)
+    for (i in 1:n) Y.new[, n * (0:(d - 1)) + i] <- Y[, n * (0:(p - 
+        1)) + i] %*% t(M)
+    Y <- Y.new
+    mu.g <- matrix(NA, N, d)
+    var.g <- matrix(NA, N, d^2)
+    for (i in 1:d) {
+        mu.g[, i] <- rowMeans(Y[, n * (i - 1) + (1:n)], na.rm = T)
+        for (j in unique(1:i)) {
+            Z.i <- Y[, n * (i - 1) + (1:n)] - mu.g[, i]
+            Z.j <- Y[, n * (j - 1) + (1:n)] - mu.g[, j]
+            var.g[, d * (i - 1) + j] <- var.g[, d * (j - 1) + 
+                i] <- n/(n - 1) * rowMeans(Z.i * Z.j, na.rm = T)
+        }
+    }
+    dimnames(mu.g) <- list(id, rownames(M))
+    list(mean = mu.g, var = var.g)
 }
+
 
 "as.data.frame.fit.n.data" <- 
 function(x, ...)
@@ -839,7 +1011,7 @@ function(x, ...){
   s <- x$shape
   if(Var.Struct!="simple"){
     d <- dim(x$rate)[1]
-    J <- c((2*d+1)*exp(th[1]), exp(th[2:(d+1)]))
+    J <- c(2*d*exp(th[1]), exp(th[2:(d+1)]))
     upper <- outer(1:d, 1:d, FUN="<=")
     r <- x$rate[upper]
     if(d>1) J <- c(J, rep(1, d*(d-1)/2))
@@ -893,6 +1065,7 @@ function(object, ...)
   m.nm <- c("Wishart/Inverse Wishart", "Chi-Squared/Inverse Gamma")[m.type]
   fit <- object$EBfit
   cat("\n\n" %,% m.nm %,% " model fit: \n")
+  print(object$call)
   print(fit)
   invisible(object)
 }
@@ -901,17 +1074,8 @@ function(object, ...)
 function(object)
 {
   fit <- object$EBfit
+  fit$call <- object$call
   fit
-}
-
-"update.fit.n.data" <-
-function(object, ...)
-{
-  m <- match.call()
-  m[[1]] <- as.name("update")
-  new.obj <- list(call=object$EBfit$call)
-  m$object <- new.obj
-  eval(m, sys.parent())
 }
 
 "coef.fit.n.data" <- 
@@ -1298,8 +1462,8 @@ function(shape=NULL, rate=NULL, theta=NULL, f1f2=c(1/4, 1/2), nreps,
     stop("Argument 'nreps' must be of length 1 or of length 'Ngenes'")
   if(is.theta) {
     sr <- shape.rate(theta)
-    shape <- nuL$shape
-    rate <- nuL$rate
+    shape <- sr$shape
+    rate <- sr$rate
   }
   d.r <- dim(rate)
   issym <- sum(abs(t(rate) - rate)==0)

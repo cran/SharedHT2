@@ -6,7 +6,7 @@
   experiment under the Multivariate Normal/mixed Inverse Wishart model. This
   can be used to generate a variety of example datasets which violate the 
   assumptions of the Multivariate Normal/Inverse Wishart model.  See the 
-  documentation for \code{SimMVN.mxIW} for more details (type ?SimMVN.mxIW).}
+  documentation for \code{SimMVN.mxIW} for more details (type ?SimMVN.mxIW).
 }
 
 \usage{
@@ -41,7 +41,7 @@
 \value{
   A dataframe having \code{Ngenes} rows and \code{nreps * d} columns where \code{d}
   is implicit in the dimension of Lambda, (see above).  See the documentation for
-  \code{SimAffyDat} for more details.}
+  \code{SimAffyDat} for more details.
 }
 
 \author{Grant Izmirlian \email{izmirlian@nih.gov}}

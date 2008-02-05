@@ -121,6 +121,24 @@
 
   data(SimAffyDat)
 
+\dontrun{
+# If the two bioconductor packages, "affy" and "hgu95av2" are
+# installed, replace the above line with
+
+  data(SimAffyDat.ann)
+  SimAffyDat <- SimAffyDat.ann
+
+# In general if you have a replicated microarray experiment in
+# "MyMicroArrayData" and the corresponding bioconductor annotation
+# package is "hguFOOBAR" then, after making sure that packages
+# "affy" and "hguFOOBAR" are installed, the enhanced functionality
+# is turned on by adding an attribute to your dataframe as follows:
+
+  attr(MyMicroArrayData, "annotation") <- "hguFOOBAR"
+
+
+}
+
 
 # Fit the Wishart/Inverse Wishart empirical Bayes model and derive per gene
 # Shared Variance Hotelling T-Squared (ShHT2) statistics.
@@ -134,6 +152,10 @@
 
 # Same screen output & opens html browser with genelist linked to GeneCards database.
 # Type ?TopGenes for help
+
+# Note:  part of the 'enhanced functionality' is floating gene names
+# over the links to the gene identifiers but there is more ....
+# see the help under TopGenes (well ... more on that later...)
 
   print(fit.SimAffyDat, browse = TRUE)
 

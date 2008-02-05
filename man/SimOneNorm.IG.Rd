@@ -4,7 +4,7 @@
 \description{
   \code{SimOneNorm.IG} generates a single simulated micro-array expression 
   experiment under the Normal/Inverse Gamma model. This can be used
-  to generate a variety of example datasets.}
+  to generate a variety of example datasets.
 }
 \usage{
 SimOneNorm.IG(shape = NULL, rate = NULL, theta = NULL, ngroups, nreps, Ngenes, 
@@ -31,7 +31,7 @@ SimOneNorm.IG(shape = NULL, rate = NULL, theta = NULL, ngroups, nreps, Ngenes,
 \value{
   A dataframe having \code{Ngenes} rows and \code{nreps * d} columns where \code{d}
   is implicit in the dimension of Lambda, (see above).  See the documentation for
-  \code{SimAffyDat} for more details.}
+  \code{SimAffyDat} for more details.
 }
 
 \author{Grant Izmirlian \email{izmirlian@nih.gov}}

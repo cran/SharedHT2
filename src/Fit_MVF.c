@@ -1,6 +1,7 @@
 #include<R.h>
 #include<Rmath.h>
-#define EPS 1.0e-7
+#define EPS 1e-7
+#define RELTOL 1.490116e-08
 #define MDXMIN 2.470328e-323
 typedef struct{
   double *MVM;
@@ -77,12 +78,12 @@ void Fit_MVF(double *ptheta0, double *MVM, int *pN, int *pd,
   for(i=1;i<npar;i++) *(estimate+i) = 0.0;
 
   if(*usegr==0){
-    nmmin(inpar, ptheta0, estimate, objval, loglik, ifail, -1e200, 1e-8, y,
+    nmmin(inpar, ptheta0, estimate, objval, loglik, ifail, -1e200, RELTOL, y,
           1.0, 0.5, 2.0, verb, ifncnt, 10000);
   }
   else{
     vmmin(inpar, ptheta0, objval, loglik, Gloglik, 10000, verb, imask, -1e200,
-          1e-8, 10, y, ifncnt, igrcnt, ifail);
+          RELTOL, 10, y, ifncnt, igrcnt, ifail);
 
     for(i=0;i<npar;i++)
       *(estimate+i) = *(ptheta0+i);
@@ -123,7 +124,7 @@ double loglik(int p, double *theta, void *yy)
     *(Lambda + i) = 0.0;
   }
 
-  nu = (2.0*xd + 2.0)*(exp(*theta)+1.0);
+  nu = 2.0 * xd*(exp(*theta)+1.0);
 
   l=0;
   for(i=0;i<d;i++){
@@ -216,7 +217,7 @@ void Gloglik(int inpar, double *theta, double *G, void *yy)
 
   /* calculate nu, the d.f. parameter */
   eth0 = exp(*theta);
-  nu = (2.0*xd+2.0)*(eth0+1.0);
+  nu = 2.0*xd*(eth0+1.0);
 
   /* calculate Lambdahlf, the chol. sq. root of Lambda, the matrix parameter */
   l=0;
@@ -313,7 +314,7 @@ void Gloglik(int inpar, double *theta, double *G, void *yy)
 
   /* Loop over genes */
   for(h=0;h<N;h++){
-    /* derivative w.r.t. theta_1, where nu = exp(theta_1) */
+    /* derivative w.r.t. theta_1, where nu = exp(theta_1)*2*d */
     xnreps = (double) (*(nreps +h));
     for (j=0;j<d2;j++) *(xd2buff+j) = 0.0;
     detS = pow(xnreps - 1.0, xd) * det((MVM+d2*h), xd2buff, pd);
@@ -324,8 +325,8 @@ void Gloglik(int inpar, double *theta, double *G, void *yy)
     for(j=0;j<d2;j++) *(SplL +j) = (xnreps-1.0)*(*(MVM +d2*h +j)) +(*(Lambda +j));
     detSplL = det(SplL, xd2buff, pd);
     v = detL/detSplL;
-    *G += -1.0 * (dimgamma((nu + xnreps - xd -2.0)/2.0, d) - dimgamma((nu - xd - 1.0)/2.0, d) +
-           log(v))*eth0*(xd + 1.0);
+    *G += -(dimgamma((nu + xnreps - xd -2.0)/2.0, d) - dimgamma((nu - xd - 1.0)/2.0, d) +
+           log(v))*eth0*xd;
 
     for(j=0;j<d2;j++) *(xd2buff +j) = *(SplL +j);
     matinv(xd2buff, SplLinv, pd);

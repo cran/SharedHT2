@@ -11,7 +11,7 @@
   versus control.  
 }
 \usage{
- data(SimAfyDat)
+ data(SimAffyDat)
 }
 \note{
   All but the first 100 rows have population mean zero.

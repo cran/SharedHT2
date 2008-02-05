@@ -10,7 +10,7 @@
   doesn't obey the Multivariate Normal/Inverse Wishart model assumptions. 
   Specifically, the mixed Inverse Wishart is chosen so that the average group 
   variances under this model are the same as they would be under the 
-  Multivariate Noraml/Inverse Wishart model with the same parameters.}
+  Multivariate Noraml/Inverse Wishart model with the same parameters.
 }
 \usage{
 SimMVN.mxIW(nsim, shape = NULL, rate = NULL, theta = NULL, nreps, 
